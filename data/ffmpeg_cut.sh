@@ -1,0 +1,1 @@
+ffmpeg -i V3.mp4 -ss 00:00:20 -t 00:00:05 -c copy "V3.5.mp4"
