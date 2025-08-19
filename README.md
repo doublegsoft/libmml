@@ -1,4 +1,18 @@
-## 手动编译FFMPEG
+### 手动编译x264
+
+```bash
+
+cd 3rd/x264
+
+mkdir -p build/darwin
+
+cd build/darwin
+
+../../configure --enable-shared --disable-static --enable-pic --enable-asm
+
+```
+
+### 手动编译FFMPEG
 
 ```bash
 
@@ -8,7 +22,11 @@ mkdir -p build/darwin
 
 cd build/darwin
 
-../../configure
+../../configure \
+  --enable-shared --disable-static \
+  --disable-programs \
+  --disable-doc \
+  --enable-gpl 
 
 make
 

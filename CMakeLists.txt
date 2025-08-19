@@ -5,15 +5,13 @@ project(libmml C)
 set(CMAKE_C_STANDARD            99)
 set(CMAKE_C_FLAGS               "${CMAKE_C_FLAGS}")
 
-set(GFC                         "gfc")
-
-set(LIBS_DIR									 "/Volumes/EXPORT/local/opens")
-set(FFMPEG_DIR                  "/usr/local/Cellar/ffmpeg/7.1_4")
+set(GFC_DIR                     "3rd/gfc")
+set(FFMPEG_DIR                  "3rd/ffmpeg")
 
 set(WITH_GFC_CRYPTO OFF CACHE BOOL "gfc crypto" FORCE)
 set(WITH_GFC_JVM OFF CACHE BOOL "gfc jvm" FORCE)
 set(WITH_GFC_LUA OFF CACHE BOOL "gfc lua" FORCE)
-add_subdirectory("3rd/${GFC}")
+add_subdirectory("${GFC_DIR}")
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(BUILD                    "build/darwin")
@@ -36,12 +34,19 @@ set(LIBMML_LIB
 
 include_directories(
   "src"
-  "3rd/${GFC}/include"
-  "${FFMPEG_DIR}/include"
+  "${GFC_DIR}/include"
+  "${FFMPEG_DIR}"
+  "${FFMPEG_DIR}/${BUILD}"
 )
 
 link_directories(
-	"${FFMPEG_DIR}/lib"
+  "${FFMPEG_DIR}/${BUILD}/libavcodec"
+  "${FFMPEG_DIR}/${BUILD}/libavdevice"
+  "${FFMPEG_DIR}/${BUILD}/libavfilter"
+  "${FFMPEG_DIR}/${BUILD}/libavformat"
+  "${FFMPEG_DIR}/${BUILD}/libavutil"
+  "${FFMPEG_DIR}/${BUILD}/libswresample"
+  "${FFMPEG_DIR}/${BUILD}/libswscale"
 )
 
 add_library(mml STATIC ${LIBMML_SRC})
@@ -57,7 +62,7 @@ target_link_libraries(mml_shared PRIVATE
 )
 
 add_executable(test_mml_audio_remove
-	"test/test_mml_audio_remove.c"
+  "test/test_mml_audio_remove.c"
 )
 
 target_link_libraries(test_mml_audio_remove PRIVATE
@@ -65,7 +70,7 @@ target_link_libraries(test_mml_audio_remove PRIVATE
 )
 
 add_executable(test_mml_video_info
-	"test/test_mml_video_info.c"
+  "test/test_mml_video_info.c"
 )
 
 target_link_libraries(test_mml_video_info PRIVATE
@@ -73,7 +78,7 @@ target_link_libraries(test_mml_video_info PRIVATE
 )
 
 add_executable(test_mml_audio_extract
-	"test/test_mml_audio_extract.c"
+  "test/test_mml_audio_extract.c"
 )
 
 target_link_libraries(test_mml_audio_extract PRIVATE
@@ -81,7 +86,7 @@ target_link_libraries(test_mml_audio_extract PRIVATE
 )
 
 add_executable(test_mml_video_resize
-	"test/test_mml_video_resize.c"
+  "test/test_mml_video_resize.c"
 )
 
 target_link_libraries(test_mml_video_resize PRIVATE
@@ -89,7 +94,7 @@ target_link_libraries(test_mml_video_resize PRIVATE
 )
 
 add_executable(test_mml_video_pad
-	"test/test_mml_video_pad.c"
+  "test/test_mml_video_pad.c"
 )
 
 target_link_libraries(test_mml_video_pad PRIVATE
@@ -97,7 +102,7 @@ target_link_libraries(test_mml_video_pad PRIVATE
 )
 
 add_executable(test_mml_video_concat
-	"test/test_mml_video_concat.c"
+  "test/test_mml_video_concat.c"
 )
 
 target_link_libraries(test_mml_video_concat PRIVATE
@@ -105,7 +110,7 @@ target_link_libraries(test_mml_video_concat PRIVATE
 )
 
 add_executable(test_mml_video_cut
-	"test/test_mml_video_cut.c"
+  "test/test_mml_video_cut.c"
 )
 
 target_link_libraries(test_mml_video_cut PRIVATE
@@ -113,7 +118,7 @@ target_link_libraries(test_mml_video_cut PRIVATE
 )
 
 add_executable(test_frames_in_video
-	"test/test_frames_in_video.c"
+  "test/test_frames_in_video.c"
 )
 
 target_link_libraries(test_frames_in_video PRIVATE
@@ -121,7 +126,7 @@ target_link_libraries(test_frames_in_video PRIVATE
 )
 
 add_executable(test_mml_video_images
-	"test/test_mml_video_images.c"
+  "test/test_mml_video_images.c"
 )
 
 target_link_libraries(test_mml_video_images PRIVATE
