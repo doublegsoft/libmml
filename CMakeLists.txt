@@ -7,6 +7,7 @@ set(CMAKE_C_FLAGS               "${CMAKE_C_FLAGS}")
 
 set(GFC_DIR                     "3rd/gfc")
 set(FFMPEG_DIR                  "3rd/ffmpeg")
+set(STB_DIR                     "3rd/stb")
 
 set(WITH_GFC_CRYPTO OFF CACHE BOOL "gfc crypto" FORCE)
 set(WITH_GFC_JVM OFF CACHE BOOL "gfc jvm" FORCE)
@@ -20,6 +21,8 @@ endif()
 set(LIBMML_SRC
   "src/libmml.c" 
   "src/libmml-frame.c"
+  "src/libmml-image.c"
+  "src/libmml-blend.c"
 )
 
 set(LIBMML_LIB
@@ -37,16 +40,18 @@ include_directories(
   "${GFC_DIR}/include"
   "${FFMPEG_DIR}"
   "${FFMPEG_DIR}/${BUILD}"
+  "${STB_DIR}"
 )
 
 link_directories(
-  "${FFMPEG_DIR}/${BUILD}/libavcodec"
-  "${FFMPEG_DIR}/${BUILD}/libavdevice"
-  "${FFMPEG_DIR}/${BUILD}/libavfilter"
-  "${FFMPEG_DIR}/${BUILD}/libavformat"
-  "${FFMPEG_DIR}/${BUILD}/libavutil"
-  "${FFMPEG_DIR}/${BUILD}/libswresample"
-  "${FFMPEG_DIR}/${BUILD}/libswscale"
+  "/opt/homebrew/Cellar/ffmpeg/8.0_1/lib"
+  # "${FFMPEG_DIR}/${BUILD}/libavcodec"
+  # "${FFMPEG_DIR}/${BUILD}/libavdevice"
+  # "${FFMPEG_DIR}/${BUILD}/libavfilter"
+  # "${FFMPEG_DIR}/${BUILD}/libavformat"
+  # "${FFMPEG_DIR}/${BUILD}/libavutil"
+  # "${FFMPEG_DIR}/${BUILD}/libswresample"
+  # "${FFMPEG_DIR}/${BUILD}/libswscale"
 )
 
 add_library(mml STATIC ${LIBMML_SRC})
@@ -130,5 +135,21 @@ add_executable(test_mml_video_images
 )
 
 target_link_libraries(test_mml_video_images PRIVATE
+  mml
+)
+
+add_executable(test_mml_blend_rotate
+  "test/test_mml_blend_rotate.c"
+)
+
+target_link_libraries(test_mml_blend_rotate PRIVATE
+  mml
+)
+
+add_executable(test_mml_blend_fade
+  "test/test_mml_blend_fade.c"
+)
+
+target_link_libraries(test_mml_blend_fade PRIVATE
   mml
 )

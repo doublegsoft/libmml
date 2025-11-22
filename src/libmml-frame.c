@@ -97,3 +97,26 @@ mml_frame_encode(const mml_encoder_p encoder,
   }
   return MML_SUCCESS;
 }
+
+void 
+mml_frame_encode2(AVCodecContext* enc_ctx, 
+                 AVFormatContext* fmt_ctx, 
+                 AVStream* stream, 
+                 AVFrame* frame, 
+                 AVPacket* pkt) 
+{
+  int ret = avcodec_send_frame(enc_ctx, frame);
+  if (ret < 0) exit(1);
+
+  while (ret >= 0) 
+  {
+    ret = avcodec_receive_packet(enc_ctx, pkt);
+    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) return;
+    if (ret < 0) exit(1);
+
+    av_packet_rescale_ts(pkt, enc_ctx->time_base, stream->time_base);
+    pkt->stream_index = stream->index;
+    av_interleaved_write_frame(fmt_ctx, pkt);
+    av_packet_unref(pkt);
+  }
+}
