@@ -50,6 +50,29 @@ mml_blend_fade(uint8_t* out,
                int h, 
                float t);
 
+/*!
+** 核心算法：像素溶解 / 马赛克过渡 (Pixelate / Mosaic Dissolve)
+**
+** 视觉效果：
+** 1. 前半段 (0% -> 50%)：图片 A 的马赛克块逐渐变大，画面变得越来越模糊。
+** 2. 中间点 (50%)：画面最模糊，此时悄悄切换为图片 B。
+** 3. 后半段 (50% -> 100%)：图片 B 的马赛克块逐渐变小，画面重新变清晰。
+**
+** @param out         输出图像缓冲区
+** @param img_start   起始图片
+** @param img_end     目标图片
+** @param w           图像宽度
+** @param h           图像高度
+** @param t           过渡进度 (0.0 ~ 1.0)
+*/
+void 
+mml_blend_pixelate(uint8_t* out,
+                   uint8_t* img_start, 
+                   uint8_t* img_end, 
+                   int w, 
+                   int h, 
+                   float t); 
+
 #ifdef __cplusplus
 }
 #endif

@@ -153,3 +153,11 @@ add_executable(test_mml_blend_fade
 target_link_libraries(test_mml_blend_fade PRIVATE
   mml
 )
+
+add_executable(test_mml_blend_pixelate
+  "test/test_mml_blend_pixelate.c"
+)
+
+target_link_libraries(test_mml_blend_pixelate PRIVATE
+  mml
+)

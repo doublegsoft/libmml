@@ -82,7 +82,7 @@ mml_blend_fade(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h,
 #define CLAMP(x) ((x) < 0 ? 0 : ((x) > 255 ? 255 : (x)))
 
 void 
-mml_blend_wipe_right(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, float t) {
+mml_blend_wipe_right(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) {
   // 定义羽化宽度 (例如占屏幕宽度的 20%)
   float soft_edge = 0.2f; 
   
@@ -107,15 +107,15 @@ mml_blend_wipe_right(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, f
       int idx = (y * w + x) * 3;
       
       // 混合: 0 是 A，1 是 B
-      out[idx+0] = (uint8_t)(imgA[idx+0] * (1.0f - alpha) + imgB[idx+0] * alpha);
-      out[idx+1] = (uint8_t)(imgA[idx+1] * (1.0f - alpha) + imgB[idx+1] * alpha);
-      out[idx+2] = (uint8_t)(imgA[idx+2] * (1.0f - alpha) + imgB[idx+2] * alpha);
+      out[idx+0] = (uint8_t)(img_start[idx+0] * (1.0f - alpha) + img_end[idx+0] * alpha);
+      out[idx+1] = (uint8_t)(img_start[idx+1] * (1.0f - alpha) + img_end[idx+1] * alpha);
+      out[idx+2] = (uint8_t)(img_start[idx+2] * (1.0f - alpha) + img_end[idx+2] * alpha);
     }
   }
 }
 
 void 
-mml_blend_circle_open(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, float t) {
+mml_blend_circle_open(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) {
   float cx = w / 2.0f;
   float cy = h / 2.0f;
   
@@ -134,14 +134,14 @@ mml_blend_circle_open(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, 
 
       if (dist < current_r) {
         // 在圆圈内：显示 B
-        out[idx+0] = imgB[idx+0];
-        out[idx+1] = imgB[idx+1];
-        out[idx+2] = imgB[idx+2];
+        out[idx+0] = img_end[idx+0];
+        out[idx+1] = img_end[idx+1];
+        out[idx+2] = img_end[idx+2];
       } else {
         // 在圆圈外：显示 A
-        out[idx+0] = imgA[idx+0];
-        out[idx+1] = imgA[idx+1];
-        out[idx+2] = imgA[idx+2];
+        out[idx+0] = img_start[idx+0];
+        out[idx+1] = img_start[idx+1];
+        out[idx+2] = img_start[idx+2];
       }
       // 进阶：你也可以在这里加羽化逻辑，原理同上
     }
@@ -149,7 +149,7 @@ mml_blend_circle_open(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, 
 }
 
 void 
-mml_blend_flash(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, float t) 
+mml_blend_flash(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
 {
   int total_pixels = w * h;
   
@@ -163,18 +163,18 @@ mml_blend_flash(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, float 
       float progress = t * 2.0f; 
       
       // 算法：插值混合 A 和 白色(255)
-      r = (uint8_t)(imgA[idx+0] * (1.0f - progress) + 255 * progress);
-      g = (uint8_t)(imgA[idx+1] * (1.0f - progress) + 255 * progress);
-      b = (uint8_t)(imgA[idx+2] * (1.0f - progress) + 255 * progress);
+      r = (uint8_t)(img_start[idx+0] * (1.0f - progress) + 255 * progress);
+      g = (uint8_t)(img_start[idx+1] * (1.0f - progress) + 255 * progress);
+      b = (uint8_t)(img_start[idx+2] * (1.0f - progress) + 255 * progress);
     } else {
       // 后半段 (0.5 ~ 1.0): 纯白 -> 图片 B
       // 进度 map 到 0.0 ~ 1.0
       float progress = (t - 0.5f) * 2.0f;
       
       // 算法：插值混合 白色(255) 和 B
-      r = (uint8_t)(255 * (1.0f - progress) + imgB[idx+0] * progress);
-      g = (uint8_t)(255 * (1.0f - progress) + imgB[idx+1] * progress);
-      b = (uint8_t)(255 * (1.0f - progress) + imgB[idx+2] * progress);
+      r = (uint8_t)(255 * (1.0f - progress) + img_end[idx+0] * progress);
+      g = (uint8_t)(255 * (1.0f - progress) + img_end[idx+1] * progress);
+      b = (uint8_t)(255 * (1.0f - progress) + img_end[idx+2] * progress);
     }
 
     out[idx+0] = r;
@@ -184,7 +184,8 @@ mml_blend_flash(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, float 
 }
 
 void 
-mml_blend_pixelate(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, float t) {
+mml_blend_pixelate(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
+{
   // 1. 计算当前的块大小 (block size)
   // t=0时块大小为1(原图)，t=0.5时块最大(如50像素)，t=1时块大小回为1
   float max_block_size = 50.0f;
@@ -212,13 +213,13 @@ mml_blend_pixelate(uint8_t* out, uint8_t* imgA, uint8_t* imgB, int w, int h, flo
 
       // 如果 t < 0.5 显示 A 的马赛克，否则显示 B 的马赛克
       if (t < 0.5f) {
-        out[idx+0] = imgA[b_idx+0];
-        out[idx+1] = imgA[b_idx+1];
-        out[idx+2] = imgA[b_idx+2];
+        out[idx+0] = img_start[b_idx+0];
+        out[idx+1] = img_start[b_idx+1];
+        out[idx+2] = img_start[b_idx+2];
       } else {
-        out[idx+0] = imgB[b_idx+0];
-        out[idx+1] = imgB[b_idx+1];
-        out[idx+2] = imgB[b_idx+2];
+        out[idx+0] = img_end[b_idx+0];
+        out[idx+1] = img_end[b_idx+1];
+        out[idx+2] = img_end[b_idx+2];
       }
     }
   }
