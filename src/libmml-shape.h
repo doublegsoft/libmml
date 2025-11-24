@@ -6,26 +6,42 @@
 ** ███████╗██║██████╦╝██║░╚═╝░██║██║░╚═╝░██║███████╗
 ** ╚══════╝╚═╝╚═════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝╚══════╝
 */
-#ifndef __LIBMML_FRAME_H__
-#define __LIBMML_FRAME_H__
+#ifndef __LIBMML_SHAPE_H__
+#define __LIBMML_SHAPE_H__
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
+#include <stdlib.h>
 
-int 
-mml_frame_encode(AVCodecContext* enc_ctx, 
-                 AVFormatContext* fmt_ctx, 
-                 AVStream* stream, 
-                 AVFrame* frame, 
-                 AVPacket* pkt);
+/**
+ * 在 YUV420P 帧上画一个带边框的椭圆
+ *
+ * @param frame       目标 AVFrame
+ * @param cx          中心点 X
+ * @param cy          中心点 Y
+ * @param rx          X轴半径 (半长轴)
+ * @param ry          Y轴半径 (半短轴)
+ * @param thickness   边框厚度 (像素)
+ * @param y_val       颜色的 Y 分量
+ * @param u_val       颜色的 U 分量
+ * @param v_val       颜色的 V 分量
+ */
+ void 
+ mml_shape_ellipse(AVFrame* frame, 
+                   int cx, 
+                   int cy, 
+                   int rx, 
+                   int ry, 
+                   int thickness, 
+                   uint8_t y_val, 
+                   uint8_t u_val, 
+                   uint8_t v_val);
 
 #ifdef __cplusplus
 }
-#endif                 
+#endif  
 
-#endif // __LIBMML_FRAME_H__                 
+#endif // __LIBMML_SHAPE_H__

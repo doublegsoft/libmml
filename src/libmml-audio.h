@@ -6,26 +6,18 @@
 ** ███████╗██║██████╦╝██║░╚═╝░██║██║░╚═╝░██║███████╗
 ** ╚══════╝╚═╝╚═════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝╚══════╝
 */
-#ifndef __LIBMML_FRAME_H__
-#define __LIBMML_FRAME_H__
+#ifndef __LIBMML_AUDIO_H__
+#define __LIBMML_AUDIO_H__
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-
-int 
-mml_frame_encode(AVCodecContext* enc_ctx, 
-                 AVFormatContext* fmt_ctx, 
-                 AVStream* stream, 
-                 AVFrame* frame, 
-                 AVPacket* pkt);
+typedef struct mml_muxerctx_s mml_muxerctx_t;
 
 #ifdef __cplusplus
 }
-#endif                 
+#endif
 
-#endif // __LIBMML_FRAME_H__                 
+#endif // __LIBMML_AUDIO_H__

@@ -67,56 +67,60 @@ mml_frame_save_image(const mml_encoder_p    encoder,
   return MML_SUCCESS;
 }
 
-int
-mml_frame_encode(const mml_encoder_p encoder, 
-                 const AVFormatContext* format, 
-                 int stream_index,
-                 AVFrame* frame)
-{
-  frame->pict_type = AV_PICTURE_TYPE_NONE;
-  int ret = avcodec_send_frame(encoder->ctx, frame);
-  while(ret >= 0) 
-  {
-    av_packet_unref(encoder->pkt);
-    ret = avcodec_receive_packet(encoder->ctx, encoder->pkt);
+// int
+// mml_frame_encode(const mml_encoder_p encoder, 
+//                  const AVFormatContext* format, 
+//                  int stream_index,
+//                  AVFrame* frame)
+// {
+//   frame->pict_type = AV_PICTURE_TYPE_NONE;
+//   int ret = avcodec_send_frame(encoder->ctx, frame);
+//   while(ret >= 0) 
+//   {
+//     av_packet_unref(encoder->pkt);
+//     ret = avcodec_receive_packet(encoder->ctx, encoder->pkt);
 
-    if(ret == AVERROR(EAGAIN)) 
-      break;
-    else if (ret == AVERROR_EOF) 
-      break;
-    else if(ret < 0) 
-      return -1;
+//     if(ret == AVERROR(EAGAIN)) 
+//       break;
+//     else if (ret == AVERROR_EOF) 
+//       break;
+//     else if(ret < 0) 
+//       return -1;
 
-    encoder->pkt->stream_index = stream_index;
-    av_packet_rescale_ts(encoder->pkt, 
-                         encoder->ctx->time_base, 
-                         format->streams[stream_index]->time_base);
+//     encoder->pkt->stream_index = stream_index;
+//     av_packet_rescale_ts(encoder->pkt, 
+//                          encoder->ctx->time_base, 
+//                          format->streams[stream_index]->time_base);
 
-    if (av_interleaved_write_frame((AVFormatContext*)format, encoder->pkt) != 0)
-      return -1;
-  }
-  return MML_SUCCESS;
-}
+//     if (av_interleaved_write_frame((AVFormatContext*)format, encoder->pkt) != 0)
+//       return -1;
+//   }
+//   return MML_SUCCESS;
+// }
 
-void 
-mml_frame_encode2(AVCodecContext* enc_ctx, 
+int 
+mml_frame_encode(AVCodecContext* enc_ctx, 
                  AVFormatContext* fmt_ctx, 
                  AVStream* stream, 
                  AVFrame* frame, 
                  AVPacket* pkt) 
 {
   int ret = avcodec_send_frame(enc_ctx, frame);
-  if (ret < 0) exit(1);
+  if (ret < 0) 
+    return ret;
 
   while (ret >= 0) 
   {
     ret = avcodec_receive_packet(enc_ctx, pkt);
-    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) return;
-    if (ret < 0) exit(1);
+    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) 
+      return MML_SUCCESS;
+    if (ret < 0)
+      return ret;
 
     av_packet_rescale_ts(pkt, enc_ctx->time_base, stream->time_base);
     pkt->stream_index = stream->index;
     av_interleaved_write_frame(fmt_ctx, pkt);
     av_packet_unref(pkt);
   }
+  return MML_SUCCESS;
 }

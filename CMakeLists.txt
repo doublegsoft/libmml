@@ -20,9 +20,12 @@ endif()
 
 set(LIBMML_SRC
   "src/libmml.c" 
+  "src/libmml-error.c"
   "src/libmml-frame.c"
   "src/libmml-image.c"
+  "src/libmml-text.c"
   "src/libmml-blend.c"
+  "src/libmml-shape.c"
 )
 
 set(LIBMML_LIB
@@ -159,5 +162,13 @@ add_executable(test_mml_blend_pixelate
 )
 
 target_link_libraries(test_mml_blend_pixelate PRIVATE
+  mml
+)
+
+add_executable(test_mml_text_ltr
+  "test/test_mml_text_ltr.c"
+)
+
+target_link_libraries(test_mml_text_ltr PRIVATE
   mml
 )

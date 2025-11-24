@@ -55,11 +55,11 @@ mml_frame_save_image(const mml_encoder_p    encoder,
 ** @param encoder
 **        the encoder
 */
-int
-mml_frame_encode(const mml_encoder_p encoder, 
-                 const AVFormatContext* format, 
-                 int stream_index, 
-                 AVFrame* frame); 
+// int
+// mml_frame_encode(const mml_encoder_p encoder, 
+//                  const AVFormatContext* format, 
+//                  int stream_index, 
+//                  AVFrame* frame); 
 
 #ifdef __cplusplus
 }

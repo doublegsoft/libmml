@@ -10,10 +10,13 @@
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include "libmml-image.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+
+
 
 uint8_t* 
 mml_image_load(const char* filename, int target_w, int target_h) 
