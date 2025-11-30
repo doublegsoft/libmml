@@ -15,6 +15,7 @@ extern "C"
 #endif
   
 #include "libmml-error.h"
+#include "libmml-frame.h"
 
 struct mml_encoder_s;
 struct mml_decoder_s;

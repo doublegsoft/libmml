@@ -101,7 +101,8 @@ int main(int argc, char** argv) {
     for (int f = 0; f < static_frames; f++) {
       av_frame_make_writable(frame_yuv);
       frame_yuv->pts = global_pts++;
-      mml_frame_encode(c, oc, st, frame_yuv, pkt);
+      // mml_frame_encode(c, oc, st, frame_yuv, pkt);
+      mml_frame_write(c, oc, st, frame_yuv);
     }
 
     // 3. 显示过渡画面 (Transition)
@@ -121,7 +122,8 @@ int main(int argc, char** argv) {
         
         av_frame_make_writable(frame_yuv);
         frame_yuv->pts = global_pts++;
-        mml_frame_encode(c, oc, st, frame_yuv, pkt);
+        // mml_frame_encode(c, oc, st, frame_yuv, pkt);
+        mml_frame_write(c, oc, st, frame_yuv);
       }
       
       // 切换当前图片：释放旧的 current，将 next 变为 current
@@ -134,7 +136,8 @@ int main(int argc, char** argv) {
   }
 
   // Flush & Cleanup
-  mml_frame_encode(c, oc, st, NULL, pkt);
+  // mml_frame_encode(c, oc, st, NULL, pkt);
+  mml_frame_write(c, oc, st, frame_yuv);
   av_write_trailer(oc);
 
   sws_freeContext(sws_rgb2yuv);

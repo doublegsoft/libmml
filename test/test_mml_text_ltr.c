@@ -91,7 +91,7 @@ int main(int argc, char** argv)
       // 3. 绘制文字 (白色，坐标 50,50，大小 48)
       mml_text_ltr(frame, font_ctx, text_buf, 50, 50, 128.0f, 255, 255, 0);
       mml_frame_write(enc_ctx, ofmt_ctx, out_stream, frame);
-      av_frame_unref(frame); // 清理引用，为下一帧做准备
+      av_frame_unref(frame);
     }
     av_packet_unref(pkt);
   }

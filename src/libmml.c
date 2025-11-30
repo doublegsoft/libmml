@@ -1913,7 +1913,7 @@ mml_video_save_images(const char* original_path,
       {
         char filepath[4096];
         sprintf(filepath, "%s/%08d.png", output_path, image_index);
-        mml_frame_save_image(encoder, frame, rgb_frame, filepath);
+        mml_frame_save(frame, filepath);
         image_index++;
         av_frame_unref(frame);
       }

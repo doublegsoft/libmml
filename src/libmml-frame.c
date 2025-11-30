@@ -18,82 +18,64 @@
 #include "libmml-error.h"
 #include "libmml-frame.h"
 
-/*!
-** Saves a frame as an image under the given output path.
-*/
-int
-mml_frame_save_image(const mml_encoder_p    encoder, 
-                     const AVFrame*         orig_frame,
-                     AVFrame*               rgb_frame,
-                     const char*            output_path)
-{
-  const AVCodec* codec = encoder->enc;
-  AVCodecContext* c = encoder->ctx;
-  AVPacket* pkt = encoder->pkt;
-  
-  c->bit_rate = 400000;
-  c->width = orig_frame->width;
-  c->height = orig_frame->height;
-  c->pix_fmt = AV_PIX_FMT_RGB24;
-  c->time_base = (AVRational){1, 25};
-
-  if (avcodec_open2(c, codec, NULL) < 0)
-    return MML_ERROR_CODEC_OPEN_FAILED;
-  
-  rgb_frame->format = AV_PIX_FMT_RGB24;
-  rgb_frame->width = c->width;
-  rgb_frame->height = c->height;
-  av_frame_get_buffer(rgb_frame, 0);
-  
-  struct SwsContext* sws = sws_getContext(
-    orig_frame->width, orig_frame->height, orig_frame->format,
-    c->width, c->height, AV_PIX_FMT_RGB24,
-    SWS_BILINEAR, NULL, NULL, NULL
-  );
-  sws_scale(sws,
-    (const uint8_t * const *)orig_frame->data, orig_frame->linesize,
-    0, orig_frame->height,
-    rgb_frame->data, rgb_frame->linesize);
-  sws_freeContext(sws);
-  
-  // Send frame to encoder
-  if (avcodec_send_frame(c, rgb_frame) < 0) return -1;
-  if (avcodec_receive_packet(c, pkt) < 0) return -1;
-  
-  FILE* f = fopen(output_path, "wb");
-  if (!f) 
-    return MML_ERROR_FILE_OPEN_FAILED;
-  fwrite(pkt->data, 1, pkt->size, f);
-  fclose(f);
-  
-  return MML_SUCCESS;
-}
-
 int 
-mml_frame_encode(AVCodecContext* enc_ctx, 
-                 AVFormatContext* fmt_ctx, 
-                 AVStream* stream, 
-                 AVFrame* frame, 
-                 AVPacket* pkt) 
+mml_frame_save(AVFrame* frame, const char* filename) 
 {
-  int ret = avcodec_send_frame(enc_ctx, frame);
-  if (ret < 0) 
-    return ret;
-
-  while (ret >= 0) 
+  int ret = MML_SUCCESS;
+  
+  // 1. Find the MJPEG Encoder
+  const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
+  if (!codec) 
   {
-    ret = avcodec_receive_packet(enc_ctx, pkt);
-    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) 
-      return MML_SUCCESS;
-    if (ret < 0)
-      return ret;
-
-    av_packet_rescale_ts(pkt, enc_ctx->time_base, stream->time_base);
-    pkt->stream_index = stream->index;
-    av_interleaved_write_frame(fmt_ctx, pkt);
-    av_packet_unref(pkt);
+    mml_error_set(-1, "mjpeg codec not found");
+    return -1;
   }
-  return MML_SUCCESS;
+
+  AVCodecContext* c = avcodec_alloc_context3(codec);
+  if (!c) return -1;
+
+  c->width = frame->width;
+  c->height = frame->height;
+  c->pix_fmt = AV_PIX_FMT_YUVJ420P; // "J" means JPEG color range (0-255)
+  c->time_base = (AVRational){1, 25}; // Arbitrary for a single image
+
+  if ((ret = avcodec_open2(c, codec, NULL)) < 0) 
+  {
+    mml_error_set(ret,  "could not open codec");
+    avcodec_free_context(&c);
+    return ret;
+  }
+
+  AVPacket* pkt = av_packet_alloc();
+  
+  ret = avcodec_send_frame(c, frame);
+  if (ret < 0) 
+  {
+    mml_error_set(ret,  "error sending frame to encoder");
+    goto cleanup;
+  }
+
+  // Receive the compressed packet (the JPEG data)
+  ret = avcodec_receive_packet(c, pkt);
+  if (ret == 0) {
+    // 5. Write to file
+    FILE* f = fopen(filename, "wb");
+    if (f) 
+    {
+      fwrite(pkt->data, 1, pkt->size, f);
+      fclose(f);
+    } 
+    else 
+      mml_error_set(ret, "could not open %s for writing", filename);
+    av_packet_unref(pkt);
+  } 
+  else 
+    mml_error_set(ret, "error encoding frame", filename);
+
+cleanup:
+  av_packet_free(&pkt);
+  avcodec_free_context(&c);
+  return ret;
 }
 
 int 

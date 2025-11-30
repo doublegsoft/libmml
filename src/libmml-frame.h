@@ -17,12 +17,22 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
-int 
-mml_frame_encode(AVCodecContext* enc_ctx, 
-                 AVFormatContext* fmt_ctx, 
-                 AVStream* stream, 
-                 AVFrame* frame, 
-                 AVPacket* pkt);
+/*!
+** @brief Encodes a single AVFrame into a JPEG image and saves it to a file.
+**
+** This function creates a temporary MJPEG encoder, pushes the raw frame into it,
+** retrieves the encoded packet, and writes the bytes to disk.
+**
+** @note The input frame->format MUST support JPEG encoding (usually AV_PIX_FMT_YUVJ420P).
+**       If your video is standard AV_PIX_FMT_YUV420P, the encoder usually handles it,
+**       but strictly speaking, JPEGs use the full 0-255 color range (YUVJ).
+**
+** @param frame    Pointer to the raw (decoded) AVFrame to be saved.
+** @param filename Target file path (e.g., "snapshot.jpg").
+** @return int     0 on success, or a negative AVERROR code on failure.
+*/
+ int 
+ mml_frame_save(AVFrame* frame, const char* filename);
 
 /*!
 ** 将原始 AVFrame 编码并写入输出文件
