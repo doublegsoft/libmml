@@ -22,8 +22,7 @@ mml_video_load(const char*          filepath,
                AVFormatContext**    ofmt_ctx,
                AVCodecContext**     enc_ctx,
                AVStream**           out_stream,
-               int*                 video_idx,
-               double*              fps)
+               int*                 video_idx)
 {
   const AVCodec* decoder = NULL;
   const AVCodec* encoder = NULL;
@@ -79,7 +78,11 @@ mml_video_load(const char*          filepath,
   (*enc_ctx)->width = (*dec_ctx)->width;
   (*enc_ctx)->sample_aspect_ratio = (*dec_ctx)->sample_aspect_ratio;
   (*enc_ctx)->pix_fmt = AV_PIX_FMT_YUV420P;
-  (*enc_ctx)->time_base = av_inv_q((*dec_ctx)->framerate); 
+
+  AVRational framerate = in_stream->avg_frame_rate;
+  (*enc_ctx)->framerate = framerate;
+  (*enc_ctx)->time_base = av_inv_q(framerate); 
+
   (*out_stream)->time_base = (*enc_ctx)->time_base;
 
   // Optimization
@@ -106,6 +109,6 @@ mml_video_load(const char*          filepath,
 
   if (avformat_write_header(*ofmt_ctx, NULL) < 0) return 1;
 
-  *fps = av_q2d(in_stream->avg_frame_rate);
+  // *fps = av_q2d(in_stream->avg_frame_rate);
   return MML_SUCCESS;
 }

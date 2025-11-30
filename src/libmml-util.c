@@ -17,12 +17,12 @@
  * Style: Pointers left, 2-space indent.
  */
 void 
-mml_util_rgb2yuv(uint8_t r, 
-                 uint8_t g, 
-                 uint8_t b, 
-                 uint8_t* y, 
-                 uint8_t* u, 
-                 uint8_t* v) 
+mml_color_rgb2yuv(uint8_t r, 
+                  uint8_t g, 
+                  uint8_t b, 
+                  uint8_t* y, 
+                  uint8_t* u, 
+                  uint8_t* v) 
 {
   // Integer approximation coefficients (scaled by 2^8 = 256)
   int y_tmp = (77 * r + 150 * g + 29 * b + 128) >> 8;
@@ -36,4 +36,14 @@ mml_util_rgb2yuv(uint8_t r,
   *y = (uint8_t)CLAMP(y_tmp);
   *u = (uint8_t)CLAMP(u_tmp);
   *v = (uint8_t)CLAMP(v_tmp);
+}
+
+void 
+mml_info_timebase(AVRational tb) 
+{
+  printf("Raw Fraction:  %d/%d\n", tb.num, tb.den);
+  if (tb.den != 0) {
+    printf("Decimal Value: %.10f seconds per tick\n", av_q2d(tb));
+    printf("Inverse (Hz):  %.2f Hz\n", 1.0 / av_q2d(tb));
+  }
 }

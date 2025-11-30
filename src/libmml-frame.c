@@ -69,37 +69,6 @@ mml_frame_save_image(const mml_encoder_p    encoder,
   return MML_SUCCESS;
 }
 
-// int
-// mml_frame_encode(const mml_encoder_p encoder, 
-//                  const AVFormatContext* format, 
-//                  int stream_index,
-//                  AVFrame* frame)
-// {
-//   frame->pict_type = AV_PICTURE_TYPE_NONE;
-//   int ret = avcodec_send_frame(encoder->ctx, frame);
-//   while(ret >= 0) 
-//   {
-//     av_packet_unref(encoder->pkt);
-//     ret = avcodec_receive_packet(encoder->ctx, encoder->pkt);
-
-//     if(ret == AVERROR(EAGAIN)) 
-//       break;
-//     else if (ret == AVERROR_EOF) 
-//       break;
-//     else if(ret < 0) 
-//       return -1;
-
-//     encoder->pkt->stream_index = stream_index;
-//     av_packet_rescale_ts(encoder->pkt, 
-//                          encoder->ctx->time_base, 
-//                          format->streams[stream_index]->time_base);
-
-//     if (av_interleaved_write_frame((AVFormatContext*)format, encoder->pkt) != 0)
-//       return -1;
-//   }
-//   return MML_SUCCESS;
-// }
-
 int 
 mml_frame_encode(AVCodecContext* enc_ctx, 
                  AVFormatContext* fmt_ctx, 
@@ -129,7 +98,7 @@ mml_frame_encode(AVCodecContext* enc_ctx,
 
 int 
 mml_frame_write(AVCodecContext* enc_ctx, 
-                AVFormatContext* ofmt_ctx, 
+                AVFormatContext* ofmt_ctx,
                 AVStream* out_stream,
                 AVFrame* frame)
 {

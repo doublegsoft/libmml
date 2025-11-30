@@ -128,11 +128,11 @@ target_link_libraries(test_mml_video_cut PRIVATE
   mml
 )
 
-add_executable(test_frames_in_video
-  "test/test_frames_in_video.c"
+add_executable(test_mml_video_video
+  "test/test_mml_video_video.c"
 )
 
-target_link_libraries(test_frames_in_video PRIVATE
+target_link_libraries(test_mml_video_video PRIVATE
   mml
 )
 
@@ -184,10 +184,18 @@ target_link_libraries(test_mml_shape_ellipse PRIVATE
   mml
 )
 
-add_executable(ellipse_gen
-  "test/ellipse_gen.c"
+add_executable(test_mml_video_slow
+  "test/test_mml_video_slow.c"
 )
 
-target_link_libraries(ellipse_gen PRIVATE
+target_link_libraries(test_mml_video_slow PRIVATE
+  mml
+)
+
+add_executable(slow
+  "test/slow.c"
+)
+
+target_link_libraries(slow PRIVATE
   mml
 )

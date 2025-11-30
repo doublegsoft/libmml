@@ -16,14 +16,18 @@ extern "C"
 #endif
 
 #include <stdlib.h>
+#include <libavcodec/avcodec.h>
 
 void 
-mml_util_rgb2yuv(uint8_t r, 
-                 uint8_t g, 
-                 uint8_t b, 
-                 uint8_t* y, 
-                 uint8_t* u, 
-                 uint8_t* v);
+mml_color_rgb2yuv(uint8_t r, 
+                  uint8_t g, 
+                  uint8_t b, 
+                  uint8_t* y, 
+                  uint8_t* u, 
+                  uint8_t* v);
+
+void 
+mml_info_timebase(AVRational tb);
 
 #ifdef __cplusplus
 }

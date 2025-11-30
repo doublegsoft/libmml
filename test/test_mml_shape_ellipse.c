@@ -54,7 +54,6 @@ int main(int argc, char** argv) {
   AVCodecContext* dec_ctx = NULL;
   AVCodecContext* enc_ctx = NULL;
   
-  AVCodec* encoder = NULL;
   AVStream* out_stream = NULL;
   
   int video_idx = -1;
@@ -72,8 +71,8 @@ int main(int argc, char** argv) {
                           &ofmt_ctx,
                           &enc_ctx,
                           &out_stream,
-                          &video_idx,
-                          &fps);
+                          &video_idx);
+  fps = av_q2d(enc_ctx->framerate);                        
 
   // 4. Processing Loop
   frame = av_frame_alloc();
@@ -101,20 +100,11 @@ int main(int argc, char** argv) {
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
         else if (ret < 0) goto cleanup;
 
-        // A. Make frame writable (FFmpeg might reuse memory)
         if (av_frame_make_writable(frame) < 0) goto cleanup;
-
-        // B. Calculate smooth time
         double current_time = frame_count * time_per_frame;
-
-        // C. Draw Ellipse
         draw_moving_ellipse(frame, current_time);
 
-        // D. Update PTS for Encoder
-        // We overwrite the PTS to ensure strictly increasing timestamps
         frame->pts = frame_count; 
-
-        // E. Encode & Write
         if (mml_frame_write(enc_ctx, ofmt_ctx, out_stream, frame) < 0) goto cleanup;
         
         frame_count++;

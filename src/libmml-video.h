@@ -25,8 +25,7 @@ mml_video_load(const char*          filepath,
                AVFormatContext**    ofmt_ctx,
                AVCodecContext**     enc_ctx,
                AVStream**           out_stream,
-               int*                 video_idx,
-               double*              fps);
+               int*                 video_idx);
 
 #ifdef __cplusplus
 }
