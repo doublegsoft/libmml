@@ -21,11 +21,14 @@ endif()
 set(LIBMML_SRC
   "src/libmml.c" 
   "src/libmml-error.c"
+   "src/libmml-util.c"
   "src/libmml-frame.c"
   "src/libmml-image.c"
   "src/libmml-text.c"
   "src/libmml-blend.c"
   "src/libmml-shape.c"
+  "src/libmml-pixel.c"
+  "src/libmml-video.c"
 )
 
 set(LIBMML_LIB
@@ -170,5 +173,21 @@ add_executable(test_mml_text_ltr
 )
 
 target_link_libraries(test_mml_text_ltr PRIVATE
+  mml
+)
+
+add_executable(test_mml_shape_ellipse
+  "test/test_mml_shape_ellipse.c"
+)
+
+target_link_libraries(test_mml_shape_ellipse PRIVATE
+  mml
+)
+
+add_executable(ellipse_gen
+  "test/ellipse_gen.c"
+)
+
+target_link_libraries(ellipse_gen PRIVATE
   mml
 )

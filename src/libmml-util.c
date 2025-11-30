@@ -6,18 +6,34 @@
 ** ███████╗██║██████╦╝██║░╚═╝░██║██║░╚═╝░██║███████╗
 ** ╚══════╝╚═╝╚═════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝╚══════╝
 */
-#ifndef __LIBMML_AUDIO_H__
-#define __LIBMML_AUDIO_H__
+#include <stdlib.h>
 
-#ifdef __cplusplus
-extern "C"
+#include "libmml-util.h"
+
+#define CLAMP(v) ((v) < 0 ? 0 : ((v) > 255 ? 255 : (v)))
+
+/**
+ * Converts a single RGB pixel to YUV using integer arithmetic.
+ * Style: Pointers left, 2-space indent.
+ */
+void 
+mml_util_rgb2yuv(uint8_t r, 
+                 uint8_t g, 
+                 uint8_t b, 
+                 uint8_t* y, 
+                 uint8_t* u, 
+                 uint8_t* v) 
 {
-#endif
+  // Integer approximation coefficients (scaled by 2^8 = 256)
+  int y_tmp = (77 * r + 150 * g + 29 * b + 128) >> 8;
+  int u_tmp = (-43 * r - 84 * g + 127 * b + 128) >> 8;
+  int v_tmp = (127 * r - 106 * g - 21 * b + 128) >> 8;
 
-typedef struct mml_muxerctx_s mml_muxerctx_t;
+  // Offset U and V
+  u_tmp += 128;
+  v_tmp += 128;
 
-#ifdef __cplusplus
+  *y = (uint8_t)CLAMP(y_tmp);
+  *u = (uint8_t)CLAMP(u_tmp);
+  *v = (uint8_t)CLAMP(v_tmp);
 }
-#endif
-
-#endif // __LIBMML_AUDIO_H__

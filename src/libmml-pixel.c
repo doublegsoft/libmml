@@ -6,45 +6,29 @@
 ** ███████╗██║██████╦╝██║░╚═╝░██║██║░╚═╝░██║███████╗
 ** ╚══════╝╚═╝╚═════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝╚══════╝
 */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
+#include "libmml-pixel.h"
 
-#include "libmml-error.h"
-
-struct mml_error_s
+void mml_pixel_yuv(AVFrame* frame, 
+                   int x, 
+                   int y, 
+                   uint8_t y_val, 
+                   uint8_t u_val, 
+                   uint8_t v_val)
 {
-  int code;
+  if (x >= 0 && x < frame->width && y >= 0 && y < frame->height) 
+  {
+    frame->data[0][y * frame->linesize[0] + x] = y_val;
+  }
 
-  char msg[8192];
-};
-
-static _Thread_local mml_error_t last; 
-
-const char*
-mml_error_msg(void)
-{
-  return last.msg;
-}
-
-int
-mml_error_code(void)
-{
-  return last.code;
-}
-
-void
-mml_error_set(int           code, 
-              const char*   msg,
-              ...)
-{
-  last.code = code;
-  if (msg) {
-    va_list args;
-    va_start(args, msg);
-    vsnprintf(last.msg, sizeof(last.msg), msg, args);
-    va_end(args);
-  } else 
-    last.msg[0] = '\0';
-}
+  // Draw Chroma (U/V) - only update for even coordinates to avoid overdraw
+  if (x % 2 == 0 && y % 2 == 0) 
+  {
+    int uv_x = x / 2;
+    int uv_y = y / 2;
+    if (uv_x >= 0 && uv_x < frame->width / 2 && uv_y >= 0 && uv_y < frame->height / 2) 
+    {
+      frame->data[1][uv_y * frame->linesize[1] + uv_x] = u_val;
+      frame->data[2][uv_y * frame->linesize[2] + uv_x] = v_val;
+    }
+  }
+}  

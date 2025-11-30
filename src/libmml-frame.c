@@ -15,6 +15,8 @@
 #include <libavutil/opt.h>
 
 #include "libmml-internal.h"
+#include "libmml-error.h"
+#include "libmml-frame.h"
 
 /*!
 ** Saves a frame as an image under the given output path.
@@ -121,6 +123,42 @@ mml_frame_encode(AVCodecContext* enc_ctx,
     pkt->stream_index = stream->index;
     av_interleaved_write_frame(fmt_ctx, pkt);
     av_packet_unref(pkt);
+  }
+  return MML_SUCCESS;
+}
+
+int 
+mml_frame_write(AVCodecContext* enc_ctx, 
+                AVFormatContext* ofmt_ctx, 
+                AVStream* out_stream,
+                AVFrame* frame)
+{
+  int ret;
+
+  ret = avcodec_send_frame(enc_ctx, frame);
+  if (ret < 0) return ret;
+
+  while (ret >= 0) 
+  {
+    AVPacket* pkt = av_packet_alloc();
+    ret = avcodec_receive_packet(enc_ctx, pkt);
+    
+    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+      av_packet_free(&pkt);
+      break;
+    } else if (ret < 0) {
+      av_packet_free(&pkt);
+      return ret;
+    }
+
+    // rescale timestamps for output (encoder time base -> stream time base)
+    av_packet_rescale_ts(pkt, enc_ctx->time_base, out_stream->time_base);
+    pkt->stream_index = out_stream->index;
+
+    ret = av_interleaved_write_frame(ofmt_ctx, pkt);
+    av_packet_free(&pkt);
+    
+    if (ret < 0) return ret;
   }
   return MML_SUCCESS;
 }

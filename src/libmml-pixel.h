@@ -6,41 +6,40 @@
 ** ███████╗██║██████╦╝██║░╚═╝░██║██║░╚═╝░██║███████╗
 ** ╚══════╝╚═╝╚═════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝╚══════╝
 */
-#ifndef __LIBMML_FRAME_H__
-#define __LIBMML_FRAME_H__
+#ifndef __LIBMML_PIXEL_H__
+#define __LIBMML_PIXEL_H__
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-
-int 
-mml_frame_encode(AVCodecContext* enc_ctx, 
-                 AVFormatContext* fmt_ctx, 
-                 AVStream* stream, 
-                 AVFrame* frame, 
-                 AVPacket* pkt);
+#include <libavutil/frame.h>
 
 /*!
-** 将原始 AVFrame 编码并写入输出文件
-** 
-** @param enc_ctx    编码器上下文 (存储编码参数)
-** @param ofmt_ctx   输出格式上下文 (管理输出文件)
-** @param out_stream 输出流 (用于获取时间基和索引)
-** @param frame      要编码的原始帧 (如果为 NULL，则表示刷新编码器，输出剩余缓存数据)
-** @return 0 表示成功，负数表示错误
+** Sets a specific pixel at (x, y) to the provided YUV values in an AVFrame.
+**
+** @note This function assumes the AVFrame format is YUV420P (planar YUV 4:2:0).
+**       In this format, U and V planes are half the width and half the height 
+**       of the Y plane.
+**
+** @param frame  The target FFmpeg AVFrame.
+** @param x      The x-coordinate of the pixel.
+** @param y      The y-coordinate of the pixel.
+** @param y_val  Luma value (brightness).
+** @param u_val  Chroma U value (blue projection).
+** @param v_val  Chroma V value (red projection).
 */
-int 
-mml_frame_write(AVCodecContext* enc_ctx, 
-                AVFormatContext* ofmt_ctx, 
-                AVStream* out_stream,
-                AVFrame* frame);
+void 
+mml_pixel_yuv(AVFrame* frame, 
+              int x, 
+              int y, 
+              uint8_t y_val, 
+              uint8_t u_val, 
+              uint8_t v_val);
 
 #ifdef __cplusplus
 }
-#endif                 
+#endif
 
-#endif // __LIBMML_FRAME_H__                 
+#endif // __LIBMML_PIXEL_H__

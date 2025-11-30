@@ -9,7 +9,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
-#include "libmml-audio.h"
+#include "libmml-muxer.h"
 #include "libmml-error.h"
 
 struct mml_muxerctx_s
@@ -29,16 +29,17 @@ struct mml_muxerctx_s
   int audio_finished;     // Flag: audio EOF reached
 };
 
-int mml_audio_video(MuxerContext* ctx, int width, int height) 
+int 
+mml_muxer_mp4(mml_muxerctx_t* ctx, int width, int height) 
 {
   const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_H264);
   ctx->v_stream = avformat_new_stream(ctx->fmt_ctx, NULL);
   ctx->v_enc_ctx = avcodec_alloc_context3(codec);
 
-  ctx->v_enc_ctx->width = VIDEO_WIDTH;
-  ctx->v_enc_ctx->height = VIDEO_HEIGHT;
-  ctx->v_enc_ctx->time_base = (AVRational){1, VIDEO_FPS};
-  ctx->v_enc_ctx->framerate = (AVRational){VIDEO_FPS, 1};
+  ctx->v_enc_ctx->width = width;
+  ctx->v_enc_ctx->height = height;
+  ctx->v_enc_ctx->time_base = (AVRational){1, 25};
+  ctx->v_enc_ctx->framerate = (AVRational){25, 1};
   ctx->v_enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
   ctx->v_enc_ctx->gop_size = 12;
   ctx->v_enc_ctx->bit_rate = 400000;
@@ -48,7 +49,7 @@ int mml_audio_video(MuxerContext* ctx, int width, int height)
 
   if (avcodec_open2(ctx->v_enc_ctx, codec, NULL) < 0) return -1;
   avcodec_parameters_from_context(ctx->v_stream->codecpar, ctx->v_enc_ctx);
-  ctx->v_stream->time_base = ctx->v_enc_ctx->time_base; // 1/25
+  ctx->v_stream->time_base = ctx->v_enc_ctx->time_base;
   
   ctx->next_video_pts = 0;
   return MML_SUCCESS;
@@ -57,10 +58,13 @@ int mml_audio_video(MuxerContext* ctx, int width, int height)
 // ------------------------------------------------------------------
 // 2. Initialize Audio Input (Open MP3)
 // ------------------------------------------------------------------
-int mml_audio_mp3(MuxerContext* ctx, const char* mp3_filename) {
-  if (avformat_open_input(&ctx->a_in_fmt_ctx, mp3_filename, NULL, NULL) < 0) {
-    fprintf(stderr, "Could not open audio file: %s\n", mp3_filename);
-    return -1;
+int 
+mml_muxer_mp3(mml_muxerctx_t* ctx, const char* mp3_filename) 
+{
+  if (avformat_open_input(&ctx->a_in_fmt_ctx, mp3_filename, NULL, NULL) < 0) 
+  {
+    mml_error_set(MML_ERROR_FILE_NOT_EXIST, "could not open mp3 file: '%s'\n", mp3_filename);
+    return MML_ERROR_FILE_NOT_EXIST;
   }
   if (avformat_find_stream_info(ctx->a_in_fmt_ctx, NULL) < 0) return -1;
 

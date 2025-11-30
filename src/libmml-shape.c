@@ -11,11 +11,19 @@
 #include <libavutil/frame.h>
 
 #include "libmml-shape.h"
+#include "libmml-pixel.h"
 
 
-void mml_shape_ellipse(AVFrame* frame, 
-                       int cx, int cy, int rx, int ry, int thickness, 
-                       uint8_t y_val, uint8_t u_val, uint8_t v_val) 
+void 
+mml_shape_ellipse_draw(AVFrame* frame, 
+                       int cx, 
+                       int cy, 
+                       int rx, 
+                       int ry, 
+                       int thickness, 
+                       uint8_t y_val, 
+                       uint8_t u_val, 
+                       uint8_t v_val) 
 {
   int w = frame->width;
   int h = frame->height;
@@ -90,4 +98,37 @@ void mml_shape_ellipse(AVFrame* frame,
       }
     }
   }
+  int min_x = FFMAX(0, cx - rx);
+  int max_x = FFMIN(frame->width, cx + rx);
+  int min_y = FFMAX(0, cy - ry);
+  int max_y = FFMIN(frame->height, cy + ry);
+
+  for (int y = min_y; y < max_y; y++) {
+    for (int x = min_x; x < max_x; x++) {
+      // Ellipse equation check
+      double val = pow((double)(x - cx) / rx, 2) + pow((double)(y - cy) / ry, 2);
+      if (val <= 1.0) {
+        mml_pixel_yuv(frame, x, y, y_val, u_val, v_val);
+      }
+    }
+  }
+}
+
+void 
+mml_shape_ellipse_move(AVFrame* frame, 
+                       int start_cx, 
+                       int start_cy,
+                       int end_cx, 
+                       int end_cy,  
+                       int rx, 
+                       int ry, 
+                       int thickness, 
+                       uint8_t y_val, 
+                       uint8_t u_val, 
+                       uint8_t v_val,
+                       double seconds)
+{
+  // cx = cx + (int)(frame->width * sin(seconds * 1.5));
+  // cy = cy + (int)(frame->height * cos(seconds * 2.0));
+  // mml_shape_ellipse_draw(frame, cx, cy, rx, ry, thickness, y_val, u_val, v_val);
 }

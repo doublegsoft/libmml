@@ -6,8 +6,8 @@
 ** ███████╗██║██████╦╝██║░╚═╝░██║██║░╚═╝░██║███████╗
 ** ╚══════╝╚═╝╚═════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝╚══════╝
 */
-#ifndef __LIBMML_FRAME_H__
-#define __LIBMML_FRAME_H__
+#ifndef __LIBMML_VIDEO_H__
+#define __LIBMML_VIDEO_H__
 
 #ifdef __cplusplus
 extern "C"
@@ -17,30 +17,19 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
-int 
-mml_frame_encode(AVCodecContext* enc_ctx, 
-                 AVFormatContext* fmt_ctx, 
-                 AVStream* stream, 
-                 AVFrame* frame, 
-                 AVPacket* pkt);
-
-/*!
-** 将原始 AVFrame 编码并写入输出文件
-** 
-** @param enc_ctx    编码器上下文 (存储编码参数)
-** @param ofmt_ctx   输出格式上下文 (管理输出文件)
-** @param out_stream 输出流 (用于获取时间基和索引)
-** @param frame      要编码的原始帧 (如果为 NULL，则表示刷新编码器，输出剩余缓存数据)
-** @return 0 表示成功，负数表示错误
-*/
-int 
-mml_frame_write(AVCodecContext* enc_ctx, 
-                AVFormatContext* ofmt_ctx, 
-                AVStream* out_stream,
-                AVFrame* frame);
+int
+mml_video_load(const char*          filepath,
+               AVFormatContext**    ifmt_ctx,
+               AVCodecContext**     dec_ctx,
+               const char*          outpath,
+               AVFormatContext**    ofmt_ctx,
+               AVCodecContext**     enc_ctx,
+               AVStream**           out_stream,
+               int*                 video_idx,
+               double*              fps);
 
 #ifdef __cplusplus
 }
-#endif                 
+#endif
 
-#endif // __LIBMML_FRAME_H__                 
+#endif

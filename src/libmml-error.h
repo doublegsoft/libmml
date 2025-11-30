@@ -46,7 +46,7 @@ typedef struct mml_error_s mml_error_t;
 
 
 void
-mml_error_set(int code, const char* msg);
+mml_error_set(int code, const char* msg, ...);
 
 const char*
 mml_error_msg(void);
