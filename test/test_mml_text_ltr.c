@@ -89,51 +89,14 @@ int main(int argc, char** argv)
       frame->pts = frame_count; 
 
       // 3. 绘制文字 (白色，坐标 50,50，大小 48)
-      // mml_text_ltr(frame, font_ctx, text_buf, 50, 50, 128.0f, 255, 255, 0);
-
+      mml_text_ltr(frame, font_ctx, text_buf, 50, 50, 128.0f, 255, 255, 0);
       mml_frame_write(enc_ctx, ofmt_ctx, out_stream, frame);
-      // avcodec_send_frame(enc_ctx, frame);
-      
-      // while (1) 
-      // {
-      //   AVPacket* enc_pkt = av_packet_alloc();
-      //   int enc_ret = avcodec_receive_packet(enc_ctx, enc_pkt);
-      //   if (enc_ret == AVERROR(EAGAIN) || enc_ret == AVERROR_EOF) {
-      //     av_packet_free(&enc_pkt);
-      //     break;
-      //   }
-
-      //   // 转换时间戳：Encoder TimeBase -> Output Stream TimeBase
-      //   av_packet_rescale_ts(enc_pkt, ifmt_ctx->streams[video_idx]->time_base, out_stream->time_base);
-      //   enc_pkt->stream_index = out_stream->index;
-
-      //   printf("Write frame %d (pts:%lld)\r", frame_count, enc_pkt->pts);
-      //   fflush(stdout);
-
-      //   av_interleaved_write_frame(ofmt_ctx, enc_pkt);
-      //   av_packet_free(&enc_pkt);
-      // }
       av_frame_unref(frame); // 清理引用，为下一帧做准备
     }
     av_packet_unref(pkt);
   }
 
   mml_frame_write(enc_ctx, ofmt_ctx, out_stream, NULL);
-  // 7. 刷新编码器 (Flush Encoder)
-  // avcodec_send_frame(enc_ctx, NULL);
-  // while (1) {
-  //   AVPacket* enc_pkt = av_packet_alloc();
-  //   if (avcodec_receive_packet(enc_ctx, enc_pkt) < 0) {
-  //     av_packet_free(&enc_pkt);
-  //     break;
-  //   }
-  //   av_packet_rescale_ts(enc_pkt, ifmt_ctx->streams[video_idx]->time_base, out_stream->time_base);
-  //   enc_pkt->stream_index = out_stream->index;
-  //   av_interleaved_write_frame(ofmt_ctx, enc_pkt);
-  //   av_packet_free(&enc_pkt);
-  // }
-
-  // 8. 写入文件尾部
   av_write_trailer(ofmt_ctx);
 
   // 9. 清理所有资源
