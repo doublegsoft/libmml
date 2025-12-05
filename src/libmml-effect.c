@@ -7,12 +7,12 @@
 ** ╚══════╝╚═╝╚═════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝╚══════╝
 */
 
-#include "libmml-blend.h"
+#include "libmml-effect.h"
 
 #include <math.h>
 
 void 
-mml_blend_rotate(uint8_t* out, 
+mml_effect_rotate(uint8_t* out, 
                  uint8_t* img_start, 
                  uint8_t* img_end, 
                  int w, 
@@ -67,7 +67,7 @@ mml_blend_rotate(uint8_t* out,
 }
 
 void 
-mml_blend_fade(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
+mml_effect_fade(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
 {
   float alpha = t; \
   float inv_alpha = 1.0f - t;
@@ -82,7 +82,7 @@ mml_blend_fade(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h,
 #define CLAMP(x) ((x) < 0 ? 0 : ((x) > 255 ? 255 : (x)))
 
 void 
-mml_blend_wipe_right(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) {
+mml_effect_wipe_right(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) {
   // 定义羽化宽度 (例如占屏幕宽度的 20%)
   float soft_edge = 0.2f; 
   
@@ -115,7 +115,7 @@ mml_blend_wipe_right(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, 
 }
 
 void 
-mml_blend_circle_open(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) {
+mml_effect_circle_open(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) {
   float cx = w / 2.0f;
   float cy = h / 2.0f;
   
@@ -149,7 +149,7 @@ mml_blend_circle_open(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w,
 }
 
 void 
-mml_blend_flash(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
+mml_effect_flash(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
 {
   int total_pixels = w * h;
   
@@ -184,7 +184,7 @@ mml_blend_flash(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h
 }
 
 void 
-mml_blend_pixelate(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
+mml_effect_pixelate(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
 {
   // 1. 计算当前的块大小 (block size)
   // t=0时块大小为1(原图)，t=0.5时块最大(如50像素)，t=1时块大小回为1

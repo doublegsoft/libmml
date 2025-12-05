@@ -6,8 +6,8 @@
 ** ███████╗██║██████╦╝██║░╚═╝░██║██║░╚═╝░██║███████╗
 ** ╚══════╝╚═╝╚═════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝╚══════╝
 */
-#ifndef __LIBMML_BLEND_H__
-#define __LIBMML_BLEND_H__
+#ifndef __LIBMML_effect_H__
+#define __LIBMML_effect_H__
 
 #ifdef __cplusplus
 extern "C"
@@ -35,20 +35,20 @@ extern "C"
 **              - t = 1.0: 360度，完全显示 imgB
 */
 void 
-mml_blend_rotate(uint8_t* out, 
-                 uint8_t* img_start, 
-                 uint8_t* img_end, 
-                 int w, 
-                 int h, 
-                 float t);
+mml_effect_rotate(uint8_t* out, 
+                  uint8_t* img_start, 
+                  uint8_t* img_end, 
+                  int w, 
+                  int h, 
+                  float t);
 
 void 
-mml_blend_fade(uint8_t* out, 
-               uint8_t* img_start, 
-               uint8_t* img_end, 
-               int w, 
-               int h, 
-               float t);
+mml_effect_fade(uint8_t* out, 
+                uint8_t* img_start, 
+                uint8_t* img_end, 
+                int w, 
+                int h, 
+                float t);
 
 /*!
 ** 核心算法：像素溶解 / 马赛克过渡 (Pixelate / Mosaic Dissolve)
@@ -66,15 +66,15 @@ mml_blend_fade(uint8_t* out,
 ** @param t           过渡进度 (0.0 ~ 1.0)
 */
 void 
-mml_blend_pixelate(uint8_t* out,
-                   uint8_t* img_start, 
-                   uint8_t* img_end, 
-                   int w, 
-                   int h, 
-                   float t); 
+mml_effect_pixelate(uint8_t* out,
+                    uint8_t* img_start, 
+                    uint8_t* img_end, 
+                    int w, 
+                    int h, 
+                    float t); 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // __LIBMML_BLEND_H__  
+#endif // __LIBMML_effect_H__  

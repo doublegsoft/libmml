@@ -11,7 +11,7 @@
 #include <libswscale/swscale.h>
 
 #include "libmml-image.h"
-#include "libmml-blend.h"
+#include "libmml-effect.h"
 #include "libmml-frame.h"
 
 // 配置
@@ -23,7 +23,7 @@
 #define TRANSITION_DURATION 1.0 // 过渡1秒
 
 int main(int argc, char** argv) {
-  const char* outfile = "rotate.mp4";
+  const char* outfile = "pixelate.mp4";
 
   const char* imgs[] = {"../../data/1.jpg", "../../data/2.jpg", "../../data/3.jpg"};
   
@@ -101,6 +101,7 @@ int main(int argc, char** argv) {
     for (int f = 0; f < static_frames; f++) {
       av_frame_make_writable(frame_yuv);
       frame_yuv->pts = global_pts++;
+      // mml_frame_encode(c, oc, st, frame_yuv, pkt);
       mml_frame_write(c, oc, st, frame_yuv);
     }
 
@@ -113,7 +114,7 @@ int main(int argc, char** argv) {
         float progress = (float)f / (float)trans_frames;
         
         // 计算旋转和混合，结果存入 rgb_canvas
-        mml_blend_rotate(rgb_canvas, img_current, img_next, OUT_WIDTH, OUT_HEIGHT, progress);
+        mml_effect_pixelate(rgb_canvas, img_current, img_next, OUT_WIDTH, OUT_HEIGHT, progress);
 
         // RGB -> YUV
         sws_scale(sws_rgb2yuv, srcSlice, srcStride, 0, OUT_HEIGHT,
@@ -121,6 +122,7 @@ int main(int argc, char** argv) {
         
         av_frame_make_writable(frame_yuv);
         frame_yuv->pts = global_pts++;
+        // mml_frame_encode(c, oc, st, frame_yuv, pkt);
         mml_frame_write(c, oc, st, frame_yuv);
       }
       

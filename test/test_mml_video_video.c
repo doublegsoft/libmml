@@ -1,126 +1,250 @@
+/**
+* FFmpeg C API: PiP Transcoder (No Structs, No Filters)
+* 
+* Compile:
+* gcc pip_flat.c -o pip_flat -lavformat -lavcodec -lavutil -lswscale
+*/
+
+#include <stdio.h>
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
-#include <libavfilter/buffersink.h>
-#include <libavfilter/buffersrc.h>
+#include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
+#include <libswscale/swscale.h>
 
-#define IN_FILE "/Users/christian/Downloads/test.mp4"
-#define OUT_FILE "/Users/christian/Downloads/test_out.mp4"
+#include "libmml-video.h"
+#include "libmml-frame.h"
 
-#define FILTER_DESC "drawbox=x=100:y=100:w=200:h=200:color=red@0.5"
+#define PIP_W 320
+#define PIP_H 240
+#define PIP_PAD 20
+#define OUT_FILE "output_pip_flat.mp4"
 
-int main(int argc, char *argv[]) {
-  AVFormatContext *input_fmt_ctx = NULL, *output_fmt_ctx = NULL;
-  AVCodecContext *dec_ctx = NULL, *enc_ctx = NULL;
-  AVFilterGraph *filter_graph = NULL;
-  AVFilterContext *buffersrc_ctx = NULL, *buffersink_ctx = NULL;
-  const AVFilter *buffersrc, *buffersink;
-  AVFilterInOut *outputs, *inputs;
-  int video_stream_index, ret;
+// -----------------------------------------------------------------------------
+// Helper: Manual Pixel Overlay (YUV420P)
+// -----------------------------------------------------------------------------
+void overlay_yuv420p(AVFrame* dst, AVFrame* src, int x_off, int y_off) {
+  // Safety bounds check
+  if (x_off < 0 || y_off < 0) return;
+  if (x_off + src->width > dst->width) return;
+  if (y_off + src->height > dst->height) return;
 
-  AVPacket *packet = av_packet_alloc();
-  AVFrame *frame = av_frame_alloc();
-  AVFrame *filt_frame = av_frame_alloc();
-
-  const char *input_file = IN_FILE;
-
-  avformat_open_input(&input_fmt_ctx, input_file, NULL, NULL);
-  avformat_find_stream_info(input_fmt_ctx, NULL);
-  video_stream_index = av_find_best_stream(input_fmt_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
-  AVStream *in_stream = input_fmt_ctx->streams[video_stream_index];
-
-  const AVCodec *decoder = avcodec_find_decoder(in_stream->codecpar->codec_id);
-  dec_ctx = avcodec_alloc_context3(decoder);
-  avcodec_parameters_to_context(dec_ctx, in_stream->codecpar);
-  avcodec_open2(dec_ctx, decoder, NULL);
-
-  // Prepare output format context
-  avformat_alloc_output_context2(&output_fmt_ctx, NULL, NULL, OUT_FILE);
-  const AVCodec *encoder = avcodec_find_encoder(AV_CODEC_ID_H264);
-  AVStream *out_stream = avformat_new_stream(output_fmt_ctx, encoder);
-  enc_ctx = avcodec_alloc_context3(encoder);
-  enc_ctx->height = dec_ctx->height;
-  enc_ctx->width = dec_ctx->width;
-  enc_ctx->sample_aspect_ratio = dec_ctx->sample_aspect_ratio;
-  enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
-  enc_ctx->time_base = (AVRational){1, 25};
-  avcodec_open2(enc_ctx, encoder, NULL);
-  avcodec_parameters_from_context(out_stream->codecpar, enc_ctx);
-
-  if (!(output_fmt_ctx->oformat->flags & AVFMT_NOFILE))
-    avio_open(&output_fmt_ctx->pb, OUT_FILE, AVIO_FLAG_WRITE);
-  avformat_write_header(output_fmt_ctx, NULL);
-
-  // Initialize filtering
-  char args[512];
-  AVRational time_base = in_stream->time_base;
-  snprintf(args, sizeof(args),
-           "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-           dec_ctx->width, dec_ctx->height, dec_ctx->pix_fmt,
-           time_base.num, time_base.den,
-           dec_ctx->sample_aspect_ratio.num, dec_ctx->sample_aspect_ratio.den);
-
-  buffersrc = avfilter_get_by_name("buffer");
-  buffersink = avfilter_get_by_name("buffersink");
-  outputs = avfilter_inout_alloc();
-  inputs = avfilter_inout_alloc();
-  filter_graph = avfilter_graph_alloc();
-
-  avfilter_graph_create_filter(&buffersrc_ctx, buffersrc, "in", args, NULL, filter_graph);
-  avfilter_graph_create_filter(&buffersink_ctx, buffersink, "out", NULL, NULL, filter_graph);
-  av_opt_set_bin(buffersink_ctx, "pix_fmts", (uint8_t *)&enc_ctx->pix_fmt, sizeof(enc_ctx->pix_fmt), AV_OPT_SEARCH_CHILDREN);
-
-  outputs->name = av_strdup("in");
-  outputs->filter_ctx = buffersrc_ctx;
-  outputs->pad_idx = 0;
-  outputs->next = NULL;
-  inputs->name = av_strdup("out");
-  inputs->filter_ctx = buffersink_ctx;
-  inputs->pad_idx = 0;
-  inputs->next = NULL;
-
-  avfilter_graph_parse_ptr(filter_graph, FILTER_DESC, &inputs, &outputs, NULL);
-  avfilter_graph_config(filter_graph, NULL);
-
-  // Processing loop
-  while (av_read_frame(input_fmt_ctx, packet) >= 0) {
-    if (packet->stream_index == video_stream_index) {
-      avcodec_send_packet(dec_ctx, packet);
-      while (avcodec_receive_frame(dec_ctx, frame) >= 0) {
-        frame->pts = frame->best_effort_timestamp;
-        av_buffersrc_add_frame_flags(buffersrc_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF);
-        while (av_buffersink_get_frame(buffersink_ctx, filt_frame) >= 0) {
-          AVPacket out_pkt;
-          av_init_packet(&out_pkt);
-          out_pkt.data = NULL;
-          out_pkt.size = 0;
-
-          avcodec_send_frame(enc_ctx, filt_frame);
-          filt_frame->pict_type = AV_PICTURE_TYPE_I;
-          while (avcodec_receive_packet(enc_ctx, &out_pkt) >= 0) {
-            out_pkt.stream_index = out_stream->index;
-            av_packet_rescale_ts(&out_pkt, enc_ctx->time_base, out_stream->time_base);
-            av_interleaved_write_frame(output_fmt_ctx, &out_pkt);
-            av_packet_unref(&out_pkt);
-          }
-          av_frame_unref(filt_frame);
-        }
-        av_frame_unref(frame);
-      }
-    }
-    av_packet_unref(packet);
+  // 1. Copy Y Plane (Luma)
+  for (int y = 0; y < src->height; y++) {
+    uint8_t* p_dst = dst->data[0] + ((y + y_off) * dst->linesize[0]) + x_off;
+    uint8_t* p_src = src->data[0] + (y * src->linesize[0]);
+    memcpy(p_dst, p_src, src->width);
   }
 
-  av_write_trailer(output_fmt_ctx);
-  avcodec_free_context(&dec_ctx);
-  avcodec_free_context(&enc_ctx);
-  avformat_close_input(&input_fmt_ctx);
-  if (!(output_fmt_ctx->oformat->flags & AVFMT_NOFILE))
-    avio_closep(&output_fmt_ctx->pb);
-  avformat_free_context(output_fmt_ctx);
-  av_frame_free(&frame);
-  av_frame_free(&filt_frame);
-  av_packet_free(&packet);
-  avfilter_graph_free(&filter_graph);
+  // 2. Copy U and V Planes (Chroma)
+  // Subsampled by 2 in both dimensions for YUV420P
+  int uv_w = src->width / 2;
+  int uv_h = src->height / 2;
+  int uv_x = x_off / 2;
+  int uv_y = y_off / 2;
+
+  // Plane 1 = U, Plane 2 = V
+  for (int i = 1; i < 3; i++) {
+    for (int y = 0; y < uv_h; y++) {
+      uint8_t* p_dst = dst->data[i] + ((y + uv_y) * dst->linesize[i]) + uv_x;
+      uint8_t* p_src = src->data[i] + (y * src->linesize[i]);
+      memcpy(p_dst, p_src, uv_w);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Helper: Open Input File and setup Decoder
+// -----------------------------------------------------------------------------
+int open_input_file(const char* fname, 
+                    AVFormatContext** fmt_ctx, 
+                    AVCodecContext** dec_ctx, 
+                    int* stream_idx) {
+  *fmt_ctx = NULL;
+  if (avformat_open_input(fmt_ctx, fname, NULL, NULL) < 0) {
+    fprintf(stderr, "Could not open %s\n", fname);
+    return -1;
+  }
+  avformat_find_stream_info(*fmt_ctx, NULL);
+
+  *stream_idx = av_find_best_stream(*fmt_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+  if (*stream_idx < 0) return -1;
+
+  AVCodecParameters* par = (*fmt_ctx)->streams[*stream_idx]->codecpar;
+  const AVCodec* dec = avcodec_find_decoder(par->codec_id);
+  
+  *dec_ctx = avcodec_alloc_context3(dec);
+  avcodec_parameters_to_context(*dec_ctx, par);
+  
+  if (avcodec_open2(*dec_ctx, dec, NULL) < 0) return -1;
+  return 0;
+}
+
+// -----------------------------------------------------------------------------
+// Main Application
+// -----------------------------------------------------------------------------
+int main(int argc, char* argv[]) {
+
+  const char* main_video_path = "../../data/V3.mp4";
+  const char* pip_video_path = "../../data/V1.mp4";
+
+  // --- VARIABLES ---
+  
+  // Input 1 (Main)
+  AVFormatContext* in1_fmt = NULL;
+  AVCodecContext* in1_dec = NULL;
+  int in1_idx = -1;
+
+  AVPacket* in1_pkt = av_packet_alloc();
+  AVFrame* in1_frame = av_frame_alloc();
+  int in1_finished = 0;
+
+  // Input 2 (PiP)
+  AVFormatContext* in2_fmt = NULL;
+  AVCodecContext* in2_dec = NULL;
+  int in2_idx = -1;
+  AVPacket* in2_pkt = av_packet_alloc();
+  AVFrame* in2_frame = av_frame_alloc();
+  int in2_finished = 0;
+
+  // Output
+  AVFormatContext* out_fmt = NULL;
+  AVCodecContext* out_enc = NULL;
+  AVStream* out_stream = NULL;
+  int64_t next_pts = 0;
+
+  // Processing (Scaler for PiP)
+  struct SwsContext* sws_ctx = NULL;
+  AVFrame* pip_small_frame = av_frame_alloc();
+
+  // --- INITIALIZATION ---
+
+  mml_video_load(main_video_path, &in1_fmt, &in1_dec, &in1_idx, OUT_FILE, &out_fmt, &out_enc, &out_stream);
+  mml_video_load(pip_video_path, &in2_fmt, &in2_dec, &in2_idx, NULL, NULL, NULL, NULL);
+
+  // 6. Setup Scaler (PiP -> 320x240 YUV420P)
+  sws_ctx = sws_getContext(
+    in2_dec->width, in2_dec->height, in2_dec->pix_fmt, // Src
+    PIP_W, PIP_H, AV_PIX_FMT_YUV420P,                  // Dst
+    SWS_BILINEAR, NULL, NULL, NULL
+  );
+
+  // Allocate buffer for the resized PiP frame
+  pip_small_frame->format = AV_PIX_FMT_YUV420P;
+  pip_small_frame->width = PIP_W;
+  pip_small_frame->height = PIP_H;
+  av_frame_get_buffer(pip_small_frame, 32);
+
+  printf("Processing... Output: %s\n", OUT_FILE);
+
+  // --- LOOP ---
+
+  while (!in1_finished) {
+    
+    // Step A: Read & Decode Main Video
+    int got_main = 0;
+    while (av_read_frame(in1_fmt, in1_pkt) >= 0) {
+      if (in1_pkt->stream_index == in1_idx) {
+        avcodec_send_packet(in1_dec, in1_pkt);
+        if (avcodec_receive_frame(in1_dec, in1_frame) == 0) {
+          got_main = 1;
+          av_packet_unref(in1_pkt);
+          break; // Got a frame, proceed to processing
+        }
+      }
+      av_packet_unref(in1_pkt);
+    }
+    if (!got_main) {
+      in1_finished = 1;
+      break;
+    }
+
+    // Step B: Read & Decode PiP Video (Best Effort)
+    if (!in2_finished) {
+      int got_pip = 0;
+      while (av_read_frame(in2_fmt, in2_pkt) >= 0) {
+        if (in2_pkt->stream_index == in2_idx) {
+          avcodec_send_packet(in2_dec, in2_pkt);
+          if (avcodec_receive_frame(in2_dec, in2_frame) == 0) {
+            got_pip = 1;
+            av_packet_unref(in2_pkt);
+            break;
+          }
+        }
+        av_packet_unref(in2_pkt);
+      }
+      
+      if (got_pip) {
+        // Resize PiP to small buffer
+        sws_scale(sws_ctx, 
+                  (const uint8_t* const*)in2_frame->data, in2_frame->linesize,
+                  0, in2_frame->height,
+                  pip_small_frame->data, pip_small_frame->linesize);
+      } else {
+        // Stop checking input 2 if it's done, but continue main loop
+        // We will just keep overlaying the LAST valid PiP frame
+        in2_finished = 1;
+      }
+    }
+
+    // Step C: Manual Overlay
+    // Ensure we can modify the main frame pixels
+    av_frame_make_writable(in1_frame);
+
+    // Calc Position: Top Right
+    int x_pos = in1_frame->width - PIP_W - PIP_PAD;
+    int y_pos = PIP_PAD;
+
+    // Perform the copy (Check format to avoid crash)
+    if (in1_frame->format == AV_PIX_FMT_YUV420P) {
+      mml_frame_overlay(in1_frame, pip_small_frame, x_pos, y_pos);
+    }
+
+    // Step D: Encode
+    // Reset PTS for the new output timeline
+    in1_frame->pts = next_pts++;
+    in1_frame->pkt_dts = AV_NOPTS_VALUE; // Clear old DTS
+    in1_frame->pict_type = AV_PICTURE_TYPE_NONE;
+
+    if (mml_frame_write(out_enc, out_fmt, out_stream, in1_frame) < 0) {
+      fprintf(stderr, "Error encoding\n");
+      break;
+    }
+
+    if (next_pts % 30 == 0) printf("Frames: %ld\r", next_pts);
+  }
+
+  // --- FLUSH & CLEANUP ---
+  
+  // Flush encoder
+  mml_frame_write(out_enc, out_fmt, out_stream, NULL);
+  av_write_trailer(out_fmt);
+  printf("\nDone.\n");
+
+end:
+  // Free Main Input
+  if (in1_dec) avcodec_free_context(&in1_dec);
+  if (in1_fmt) avformat_close_input(&in1_fmt);
+  if (in1_pkt) av_packet_free(&in1_pkt);
+  if (in1_frame) av_frame_free(&in1_frame);
+
+  // Free PiP Input
+  if (in2_dec) avcodec_free_context(&in2_dec);
+  if (in2_fmt) avformat_close_input(&in2_fmt);
+  if (in2_pkt) av_packet_free(&in2_pkt);
+  if (in2_frame) av_frame_free(&in2_frame);
+
+  // Free Processing
+  if (sws_ctx) sws_freeContext(sws_ctx);
+  if (pip_small_frame) av_frame_free(&pip_small_frame);
+
+  // Free Output
+  if (out_fmt) {
+    if (!(out_fmt->oformat->flags & AVFMT_NOFILE))
+      avio_closep(&out_fmt->pb);
+    avformat_free_context(out_fmt);
+  }
+  if (out_enc) avcodec_free_context(&out_enc);
+
   return 0;
 }

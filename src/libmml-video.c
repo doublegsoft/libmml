@@ -18,11 +18,11 @@ int
 mml_video_load(const char*          filepath,
                AVFormatContext**    ifmt_ctx,
                AVCodecContext**     dec_ctx,
+               int*                 video_idx,
                const char*          outpath,
                AVFormatContext**    ofmt_ctx,
                AVCodecContext**     enc_ctx,
-               AVStream**           out_stream,
-               int*                 video_idx)
+               AVStream**           out_stream)
 {
   const AVCodec* decoder = NULL;
   const AVCodec* encoder = NULL;
@@ -56,6 +56,9 @@ mml_video_load(const char*          filepath,
     mml_error_set(1, "failed to open decoder");
     return 1;
   }
+
+  if (outpath == NULL)
+    return MML_SUCCESS;
 
   avformat_alloc_output_context2(ofmt_ctx, NULL, NULL, outpath);
   if (!*ofmt_ctx) 
@@ -108,7 +111,5 @@ mml_video_load(const char*          filepath,
   }
 
   if (avformat_write_header(*ofmt_ctx, NULL) < 0) return 1;
-
-  // *fps = av_q2d(in_stream->avg_frame_rate);
   return MML_SUCCESS;
 }

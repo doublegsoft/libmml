@@ -25,7 +25,7 @@ set(LIBMML_SRC
   "src/libmml-frame.c"
   "src/libmml-image.c"
   "src/libmml-text.c"
-  "src/libmml-blend.c"
+  "src/libmml-effect.c"
   "src/libmml-shape.c"
   "src/libmml-pixel.c"
   "src/libmml-video.c"
@@ -144,27 +144,27 @@ target_link_libraries(test_mml_video_images PRIVATE
   mml
 )
 
-add_executable(test_mml_blend_rotate
-  "test/test_mml_blend_rotate.c"
+add_executable(test_mml_effect_rotate
+  "test/test_mml_effect_rotate.c"
 )
 
-target_link_libraries(test_mml_blend_rotate PRIVATE
+target_link_libraries(test_mml_effect_rotate PRIVATE
   mml
 )
 
-add_executable(test_mml_blend_fade
-  "test/test_mml_blend_fade.c"
+add_executable(test_mml_effect_fade
+  "test/test_mml_effect_fade.c"
 )
 
-target_link_libraries(test_mml_blend_fade PRIVATE
+target_link_libraries(test_mml_effect_fade PRIVATE
   mml
 )
 
-add_executable(test_mml_blend_pixelate
-  "test/test_mml_blend_pixelate.c"
+add_executable(test_mml_effect_pixelate
+  "test/test_mml_effect_pixelate.c"
 )
 
-target_link_libraries(test_mml_blend_pixelate PRIVATE
+target_link_libraries(test_mml_effect_pixelate PRIVATE
   mml
 )
 
@@ -192,10 +192,50 @@ target_link_libraries(test_mml_video_slow PRIVATE
   mml
 )
 
-add_executable(slow
-  "test/slow.c"
+add_executable(test_mml_shape_arrow
+  "test/test_mml_shape_arrow.c"
 )
 
-target_link_libraries(slow PRIVATE
+target_link_libraries(test_mml_shape_arrow PRIVATE
+  mml
+)
+
+add_executable(test_mml_video_grid
+  "test/test_mml_video_grid.c"
+)
+
+target_link_libraries(test_mml_video_grid PRIVATE
+  mml
+)
+
+add_executable(zoom
+  "test/zoom.c"
+)
+
+target_link_libraries(zoom PRIVATE
+  mml
+)
+
+add_executable(magnify
+  "test/magnify.c"
+)
+
+target_link_libraries(magnify PRIVATE
+  mml
+)
+
+add_executable(blur
+  "test/blur.c"
+)
+
+target_link_libraries(blur PRIVATE
+  mml
+)
+
+add_executable(crack
+  "test/crack.c"
+)
+
+target_link_libraries(crack PRIVATE
   mml
 )

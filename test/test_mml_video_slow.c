@@ -51,11 +51,11 @@ int main(int argc, char* argv[]) {
   int rc = mml_video_load(in_filename, 
                           &ifmt_ctx,
                           &dec_ctx,
+                          &video_idx,
                           OUT_FILENAME,
                           &ofmt_ctx,
                           &enc_ctx,
-                          &out_stream,
-                          &video_idx);
+                          &out_stream);
   fps = av_q2d(enc_ctx->framerate);    
  
   // --- 3. PROCESSING LOOP ---

@@ -10,7 +10,7 @@
 #include <libswscale/swscale.h>
 
 #include "libmml-image.h"
-#include "libmml-blend.h"
+#include "libmml-effect.h"
 #include "libmml-frame.h"
 #include "libmml-text.h"
 #include "libmml-error.h"
@@ -44,11 +44,11 @@ int main(int argc, char** argv)
   int rc = mml_video_load(in_filename, 
                           &ifmt_ctx,
                           &dec_ctx,
+                          &video_idx,
                           out_filename,
                           &ofmt_ctx,
                           &enc_ctx,
-                          &out_stream,
-                          &video_idx);
+                          &out_stream);
   fps = av_q2d(enc_ctx->framerate); 
 
   if (fps < 1.0) fps = 25.0; 
