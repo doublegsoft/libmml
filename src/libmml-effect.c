@@ -11,13 +11,15 @@
 
 #include <math.h>
 
+#define CLAMP(x) ((x) < 0 ? 0 : ((x) > 255 ? 255 : (x)))
+
 void 
 mml_effect_rotate(uint8_t* out, 
-                 uint8_t* img_start, 
-                 uint8_t* img_end, 
-                 int w, 
-                 int h, 
-                 float t) {
+                  uint8_t* img_start, 
+                  uint8_t* img_end, 
+                  int w, 
+                  int h, 
+                  float t) {
   float angle = t * 2.0f * M_PI; // 旋转 0 到 360度 (2 PI)
   float cx = w / 2.0f;
   float cy = h / 2.0f;
@@ -67,7 +69,12 @@ mml_effect_rotate(uint8_t* out,
 }
 
 void 
-mml_effect_fade(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) 
+mml_effect_fade(uint8_t* out, 
+                uint8_t* img_start, 
+                uint8_t* img_end, 
+                int w, 
+                int h, 
+                float t) 
 {
   float alpha = t; \
   float inv_alpha = 1.0f - t;
@@ -78,8 +85,6 @@ mml_effect_fade(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h
     out[i] = (uint8_t)(img_start[i] * inv_alpha + img_end[i] * alpha);
   }
 }
-
-#define CLAMP(x) ((x) < 0 ? 0 : ((x) > 255 ? 255 : (x)))
 
 void 
 mml_effect_wipe_right(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) {
@@ -115,7 +120,9 @@ mml_effect_wipe_right(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w,
 }
 
 void 
-mml_effect_circle_open(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, int h, float t) {
+mml_effect_circle_open(uint8_t* out, 
+                       uint8_t* img_start, 
+                       uint8_t* img_end, int w, int h, float t) {
   float cx = w / 2.0f;
   float cy = h / 2.0f;
   

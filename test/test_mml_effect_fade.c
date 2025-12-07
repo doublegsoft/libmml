@@ -96,6 +96,8 @@ int main(int argc, char** argv) {
     // RGB -> YUV
     const uint8_t* srcSlice[] = { rgb_canvas };
     int srcStride[] = { OUT_WIDTH * 3 };
+
+  
     sws_scale(sws_rgb2yuv, srcSlice, srcStride, 0, OUT_HEIGHT,
               frame_yuv->data, frame_yuv->linesize);
 

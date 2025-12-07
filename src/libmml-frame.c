@@ -248,59 +248,115 @@ mml_plane_blur_circle(uint8_t* data, int linesize, /*int width, int height, */
 int 
 mml_frame_save(AVFrame* frame, const char* filename) 
 {
-  int ret = MML_SUCCESS;
-  
-  const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
-  if (!codec) 
-  {
-    mml_error_set(-1, "mjpeg codec not found");
+  int ret = 0;
+  const AVCodec* codec = NULL;
+  AVCodecContext* ctx = NULL;
+  AVPacket* pkt = NULL;
+  AVFrame* jpg_frame = NULL;
+  struct SwsContext* sws = NULL;
+  FILE* file = NULL;
+
+  codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
+  if (!codec) {
+    fprintf(stderr, "[Error] MJPEG encoder not found.\n");
     return -1;
   }
 
-  AVCodecContext* c = avcodec_alloc_context3(codec);
-  if (!c) return -1;
+  ctx = avcodec_alloc_context3(codec);
+  if (!ctx) return -1;
 
-  c->width = frame->width;
-  c->height = frame->height;
-  c->pix_fmt = AV_PIX_FMT_YUVJ420P; 
-  c->time_base = (AVRational){1, 25};
-
-  if ((ret = avcodec_open2(c, codec, NULL)) < 0) 
-  {
-    mml_error_set(ret,  "could not open codec");
-    avcodec_free_context(&c);
-    return ret;
-  }
-
-  AVPacket* pkt = av_packet_alloc();
+  ctx->width = frame->width;
+  ctx->height = frame->height;
   
-  ret = avcodec_send_frame(c, frame);
-  if (ret < 0) 
-  {
-    mml_error_set(ret,  "error sending frame to encoder");
+  // "time_base" is mandatory for encoders, even for single images.
+  ctx->time_base = (AVRational){1, 25}; 
+  
+  // JPEG usually uses YUVJ420P (Full Range: 0-255).
+  // Standard video is YUV420P (Limited Range: 16-235).
+  // We explicitly set this to ensure the JPEG looks correct.
+  ctx->pix_fmt = AV_PIX_FMT_YUVJ420P;
+
+  if (avcodec_open2(ctx, codec, NULL) < 0) {
+    fprintf(stderr, "[Error] Could not open codec.\n");
+    ret = -1;
     goto cleanup;
   }
 
-  // Receive the compressed packet (the JPEG data)
-  ret = avcodec_receive_packet(c, pkt);
+  // We cannot send just *any* frame to the MJPEG encoder. It must be YUVJ420P.
+  // We allocate a temporary frame and convert using libswscale.
+  
+  jpg_frame = av_frame_alloc();
+  jpg_frame->format = ctx->pix_fmt;
+  jpg_frame->width  = ctx->width;
+  jpg_frame->height = ctx->height;
+  
+  if (av_frame_get_buffer(jpg_frame, 32) < 0) {
+    ret = -1;
+    goto cleanup;
+  }
+
+  sws = sws_getContext(
+    frame->width, frame->height, frame->format,       // Src
+    ctx->width, ctx->height, ctx->pix_fmt,            // Dst
+    SWS_BILINEAR, NULL, NULL, NULL
+  );
+
+  if (!sws) {
+    ret = -1;
+    goto cleanup;
+  }
+
+  /*
+  ** Input (YUV420P)                     Output (RGB24)
+  ** ----------------                    --------------
+  ** data[0] -> [YYYYYYYY...]            data[0] -> [RGBRGBRGBRGB...]
+  ** data[1] -> [UUUU...]                data[1] -> NULL
+  ** data[2] -> [VVVV...]                data[2] -> NULL
+  */
+  sws_scale(sws, 
+            (const uint8_t* const*)frame->data, frame->linesize, 
+            0, frame->height, 
+            jpg_frame->data, jpg_frame->linesize);
+
+  pkt = av_packet_alloc();
+  if (!pkt) {
+    ret = -1;
+    goto cleanup;
+  }
+
+  // Send the converted frame to encoder
+  ret = avcodec_send_frame(ctx, jpg_frame);
+  if (ret < 0) {
+    fprintf(stderr, "[Error] Error sending frame to encoder.\n");
+    goto cleanup;
+  }
+
+  // Receive the compressed packet
+  ret = avcodec_receive_packet(ctx, pkt);
   if (ret == 0) {
-    // 5. Write to file
-    FILE* f = fopen(filename, "wb");
-    if (f) 
-    {
-      fwrite(pkt->data, 1, pkt->size, f);
-      fclose(f);
-    } 
-    else 
-      mml_error_set(ret, "could not open %s for writing", filename);
+    // ------------------------------------------------------------------------
+    // 5. Write to Disk
+    // ------------------------------------------------------------------------
+    file = fopen(filename, "wb");
+    if (file) {
+      fwrite(pkt->data, 1, pkt->size, file);
+      fclose(file);
+      printf("[Success] Saved %s (%d bytes)\n", filename, pkt->size);
+    } else {
+      fprintf(stderr, "[Error] Could not open %s for writing.\n", filename);
+      ret = -1;
+    }
     av_packet_unref(pkt);
-  } 
-  else 
-    mml_error_set(ret, "error encoding frame", filename);
+  } else {
+    fprintf(stderr, "[Error] Encoding failed.\n");
+  }
 
 cleanup:
-  av_packet_free(&pkt);
-  avcodec_free_context(&c);
+  if (sws) sws_freeContext(sws);
+  if (jpg_frame) av_frame_free(&jpg_frame);
+  if (pkt) av_packet_free(&pkt);
+  if (ctx) avcodec_free_context(&ctx);
+
   return ret;
 }
 

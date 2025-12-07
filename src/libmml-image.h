@@ -31,7 +31,30 @@ extern "C"
 ** @return uint8_t* 指向缩放后 RGB 数据的指针，如果加载失败返回 NULL
 */
 uint8_t* 
-mml_image_load(const char* filename, int target_w, int target_h);
+mml_image_load(const char* filename, 
+               int target_w, 
+               int target_h);
+
+/**
+ * @brief Decodes an image file into a raw FFmpeg AVFrame.
+ *
+ * FFmpeg treats image files as a video stream containing a single frame.
+ * This function sets up the demuxer and decoder, reads that single frame,
+ * and returns it.
+ *
+ * @note The output pixel format is usually **AV_PIX_FMT_YUVJ420P** (Full Range YUV).
+ *       If you need standard YUV420P for video encoding, you must convert it 
+ *       using sws_scale after loading.
+ *
+ * @param filename   Path to the input image file (e.g., "input.jpg").
+ * @param out_frame  [Out] Double pointer to an AVFrame. This function allocates 
+ *                   the frame on success. The caller must free it using 
+ *                   av_frame_free().
+ * @return int       0 on success, or -1 on failure.
+ */
+int 
+mml_image_frame(const char*  filename, 
+                AVFrame**    out_frame);
 
 #ifdef __cplusplus
 }
