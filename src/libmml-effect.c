@@ -14,6 +14,37 @@
 #define CLAMP(x) ((x) < 0 ? 0 : ((x) > 255 ? 255 : (x)))
 
 void 
+mml_plane_rotate(uint8_t* src_data, uint8_t* dst_data, int stride, 
+                 int w, int h, float angle_rad, uint8_t bg_color) 
+{
+  float cos_a = cosf(angle_rad);
+  float sin_a = sinf(angle_rad);
+
+  // Center coordinates
+  float cx = w / 2.0f;
+  float cy = h / 2.0f;
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      
+      float xt = x - cx;
+      float yt = y - cy;
+
+      int src_x = (int)(xt * cos_a + yt * sin_a + cx);
+      int src_y = (int)(yt * cos_a - xt * sin_a + cy);
+
+      if (src_x >= 0 && src_x < w && src_y >= 0 && src_y < h) {
+        // Copy pixel
+        dst_data[y * stride + x] = src_data[src_y * stride + src_x];
+      } else {
+        // Fill background (corners)
+        dst_data[y * stride + x] = bg_color;
+      }
+    }
+  }
+}
+
+void 
 mml_effect_rotate(uint8_t* out, 
                   uint8_t* img_start, 
                   uint8_t* img_end, 
@@ -231,3 +262,4 @@ mml_effect_pixelate(uint8_t* out, uint8_t* img_start, uint8_t* img_end, int w, i
     }
   }
 }
+

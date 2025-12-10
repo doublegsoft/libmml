@@ -102,14 +102,24 @@ mml_image_frame(const char*  filename,
       // Receive raw pixel data (Frame) from the decoder
       ret = avcodec_receive_frame(dec_ctx, frame);
       if (ret == 0) {
-        // --- Success ---
-        // Transfer ownership of 'frame' to the caller's pointer
-        *out_frame = frame; 
+        *out_frame = av_frame_alloc();
+        (*out_frame)->format = AV_PIX_FMT_YUV420P;
+        (*out_frame)->width = frame->width;
+        (*out_frame)->height = frame->height;
+        av_frame_get_buffer(*out_frame, 32);
 
-        frame = NULL; 
-        ret = 0;
+        struct SwsContext* sws = sws_getContext(
+          frame->width, frame->height, frame->format,
+          frame->width, frame->height, AV_PIX_FMT_YUV420P,
+          SWS_BILINEAR, NULL, NULL, NULL
+        );
         
-        goto cleanup_packet; 
+        sws_scale(sws, (const uint8_t* const*)frame->data, frame->linesize,
+                  0, frame->height, (*out_frame)->data, (*out_frame)->linesize);
+        
+        sws_freeContext(sws);
+        ret = 0;
+        break;
       } else if (ret == AVERROR(EAGAIN)) {
         continue;
       } else {

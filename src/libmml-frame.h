@@ -50,6 +50,35 @@ mml_frame_write(AVCodecContext* enc_ctx,
                 AVStream* out_stream,
                 AVFrame* frame);
 
+/*!
+** @brief Resizes a video frame using libswscale with caching and lazy allocation.
+**
+** This function scales an input frame to a new width/height. It handles:
+** 1. Allocating the destination frame if it doesn't exist (Lazy Allocation).
+** 2. Initializing the SwsContext if it doesn't exist (Caching).
+** 3. Performing the scaling operation.
+** 4. Copying timestamps to maintain synchronization.
+**
+** @param src     [In] Source frame.
+** @param dst     [In/Out] Pointer to the destination frame pointer. 
+**                If *dst is NULL, it will be allocated.
+** @param sws     [In/Out] Pointer to the SwsContext pointer.
+**                If *sws is NULL, it is created. It should be freed by caller later.
+** @param width   Target width.
+** @param height  Target height.
+** @return int    0 on success, negative AVERROR on failure.
+*/
+int 
+mml_frame_resize(AVFrame* src, AVFrame** dst, struct SwsContext** sws, int width, int height);    
+
+int 
+mml_frame_aspect(AVFrame* src, 
+                 AVFrame** dst, 
+                 struct SwsContext** sws, 
+                 int frame_width, int frame_height,
+                 int pic_width, int pic_height,
+                 int offset_x, int offset_y);
+
 /*！
 ** @brief Captures a decoded frame and converts it to a standard YUV420P buffer.
 **
@@ -161,6 +190,53 @@ mml_frame_circle(AVFrame* frame,
                  int yc,
                  int uc,
                  int vc); 
+
+/*!
+** @brief Applies a Fade-In effect (Black -> Normal) to a YUV420P frame.
+**
+** This function modifies pixel data directly.
+** 
+** @param frame         The target AVFrame (must be writable).
+** @param current_time  The current timestamp of the frame in seconds.
+** @param duration      The total duration of the fade effect in seconds.
+*/
+void mml_frame_fade(AVFrame* frame, 
+                    double current_time, 
+                    double duration);
+
+/*！
+** @brief Rotates a video frame by an arbitrary angle.
+**
+** This function performs a geometric rotation on the pixel data. 
+** It handles the YUV420P format by rotating the Luma plane at full resolution
+** and the Chroma planes at half resolution.
+**
+** @param base   [In] Source frame (Read-only). Must be YUV420P.
+** @param work   [In/Out] Double pointer to the destination frame. 
+**               - If *work is NULL, it will be allocated.
+**               - If *work exists, it is reused (faster for animation loops).
+** @param angle  Rotation angle in degrees (0.0 to 360.0).
+** @return int   0 on success, -1 on error.
+*/
+void 
+mml_frame_rotate(AVFrame* base, AVFrame** work, float angle);
+
+/*!
+** @brief Performs a "Wipe" transition effect (Left to Right) on a video frame.
+**
+** This function copies pixels from the source frame up to a specific horizontal 
+** point determined by 'progress'. The rest of the frame is filled with black.
+**
+** @note This implementation assumes **AV_PIX_FMT_YUV420P**.
+**
+** @param src       [In] The source frame containing the full image.
+** @param work      [In/Out] Double pointer to the working frame (canvas).
+**                  If *work is NULL, it will be allocated automatically.
+** @param progress  Animation progress from 0.0 (All Black) to 1.0 (Full Image).
+*/
+void 
+mml_frame_wipe(AVFrame* src, AVFrame** work, float progress);
+
 #ifdef __cplusplus
 }
 #endif                 

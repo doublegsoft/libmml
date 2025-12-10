@@ -12,8 +12,10 @@
 int main(int argc, char* argv[]) {
 
   AVFrame* frame = NULL;
+  AVFrame* resized_frame = NULL;
+  struct SwsContext* sws = NULL;
   mml_image_frame("../../data/1.jpg", &frame);
-  printf("%d, %d\n", frame->width, frame->height);
-  mml_frame_save(frame, "/Users/christian/Downloads/a.jpg");
+  mml_frame_resize(frame, &resized_frame, &sws, 400, 400);
+  mml_frame_save(resized_frame, "/Users/christian/Downloads/a.jpg");
   return 0;
 }

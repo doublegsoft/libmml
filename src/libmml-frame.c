@@ -17,6 +17,7 @@
 #include "libmml-internal.h"
 #include "libmml-error.h"
 #include "libmml-frame.h"
+#include "libmml-effect.h"
 
 /*!
 ** @brief Applies a fast "Separable Box Blur" to a flat memory buffer.
@@ -296,8 +297,8 @@ mml_frame_save(AVFrame* frame, const char* filename)
   }
 
   sws = sws_getContext(
-    frame->width, frame->height, frame->format,       // Src
-    ctx->width, ctx->height, ctx->pix_fmt,            // Dst
+    frame->width, frame->height, frame->format,
+    ctx->width, ctx->height, ctx->pix_fmt, 
     SWS_BILINEAR, NULL, NULL, NULL
   );
 
@@ -625,6 +626,318 @@ mml_frame_circle(AVFrame* frame,
           frame->data[1][uv_idx] = uc; 
           frame->data[2][uv_idx] = vc; 
         }
+      }
+    }
+  }
+}
+
+int 
+mml_frame_resize(AVFrame* src, 
+                 AVFrame** dst, 
+                 struct SwsContext** sws, 
+                 int width, int height) 
+{
+  int ret = 0;
+
+  if (!src || !dst) return -1;
+
+  if (*sws == NULL)
+    *sws = sws_getContext(
+      src->width, src->height, src->format, 
+      width, height, src->format,                 
+      SWS_BICUBIC, NULL, NULL, NULL 
+    );
+
+  if (*dst == NULL) {
+    *dst = av_frame_alloc();
+    if (!*dst) return AVERROR(ENOMEM);
+
+    // Set properties
+    (*dst)->format = src->format; // Preserve pixel format (e.g., YUV420P)
+    (*dst)->width  = width;
+    (*dst)->height = height;
+
+    // Allocate buffer
+    ret = av_frame_get_buffer(*dst, 32);
+    if (ret < 0) {
+      av_frame_free(dst);
+      return ret;
+    }
+  } 
+  else 
+  {
+    // Safety check: Ensure provided dst matches requested dimensions
+    if ((*dst)->width != width || (*dst)->height != height) {
+      return AVERROR(EINVAL); // Invalid argument: Dimension mismatch
+    }
+  }
+
+  if (!sws) return AVERROR(ENOMEM);
+
+  sws_scale(*sws, 
+            (const uint8_t* const*)src->data, src->linesize, 
+            0, src->height, 
+            (*dst)->data, (*dst)->linesize);
+
+  (*dst)->pts = src->pts;
+  (*dst)->pkt_dts = src->pkt_dts;
+
+  return 0;
+}
+
+int 
+mml_frame_aspect(AVFrame* src, 
+                 AVFrame** dst, 
+                 struct SwsContext** sws, 
+                 int frame_width, int frame_height,
+                 int pic_width, int pic_height,
+                 int offset_x, int offset_y) 
+{
+  int ret = 0;
+
+  if (!src || !dst) return -1;
+
+  if (*sws == NULL)
+    *sws = sws_getContext(
+      src->width, src->height, src->format, 
+      pic_width, pic_height, src->format,                 
+      SWS_BICUBIC, NULL, NULL, NULL 
+    );
+
+  if (*dst == NULL) {
+    *dst = av_frame_alloc();
+    if (!*dst) return AVERROR(ENOMEM);
+
+    // Set properties
+    (*dst)->format = src->format; // Preserve pixel format (e.g., YUV420P)
+    (*dst)->width  = frame_width;
+    (*dst)->height = frame_height;
+
+    // Allocate buffer
+    ret = av_frame_get_buffer(*dst, 32);
+    if (ret < 0) {
+      av_frame_free(dst);
+      return ret;
+    }
+  } 
+  else 
+  {
+    // Safety check: Ensure provided dst matches requested dimensions
+    if ((*dst)->width != frame_width || (*dst)->height != frame_height) {
+      return AVERROR(EINVAL); // Invalid argument: Dimension mismatch
+    }
+  }
+
+  if (!sws) return AVERROR(ENOMEM);
+
+  //
+  // fill in black
+  //
+  for (int y = 0; y < (*dst)->height; y++) {
+    memset((*dst)->data[0] + y * (*dst)->linesize[0], 0, (*dst)->width);
+  }
+
+  // U and V Planes (Chroma) -> 128 (Neutral Gray)
+  // Note: In YUV, 0 is green. 128 is "no color". 
+  // Combined with Y=0, this produces visual black.
+  for (int i = 1; i < 3; i++) {
+    int h_chroma = (*dst)->height / 2;
+    int w_chroma = (*dst)->width / 2;
+    for (int y = 0; y < h_chroma; y++) {
+      memset((*dst)->data[i] + y * (*dst)->linesize[i], 128, w_chroma);
+    }
+  }
+
+  uint8_t* dst_data[4];
+  int dst_linesize[4];
+
+  // Copy linesize from destination frame (Stride must remain full width)
+  for (int i=0; i<4; i++) dst_linesize[i] = (*dst)->linesize[i];
+
+  // Offset Y
+  dst_data[0] = (*dst)->data[0] + (offset_y * (*dst)->linesize[0]) + offset_x;
+  
+  // Offset U/V
+  int uv_off_y = offset_y / 2;
+  int uv_off_x = offset_x / 2;
+  dst_data[1] = (*dst)->data[1] + (uv_off_y * (*dst)->linesize[1]) + uv_off_x;
+  dst_data[2] = (*dst)->data[2] + (uv_off_y * (*dst)->linesize[2]) + uv_off_x;
+
+  sws_scale(*sws, 
+            (const uint8_t* const*)src->data, src->linesize, 
+            0, src->height, 
+            dst_data, dst_linesize);
+
+  (*dst)->pts = src->pts;
+  (*dst)->pkt_dts = src->pkt_dts;
+
+  return 0;
+}
+
+void mml_frame_fade(AVFrame* frame, double current_time, double duration) 
+{
+  // If the animation time has passed, do nothing. 
+  // The frame remains at full brightness (Original state).
+  if (current_time >= duration) return;
+
+  // Alpha range: 0.0 (Fully Black) -> 1.0 (Fully Visible)
+  double alpha = current_time / duration;
+
+  // Safety clamping to ensure we don't overflow later
+  if (alpha < 0.0) alpha = 0.0;
+  if (alpha > 1.0) alpha = 1.0;
+
+  // --- Optimization: Fixed Point Arithmetic ---
+  // Performing floating-point multiplication for every single pixel (2 million+ for 1080p)
+  // is expensive. We convert alpha to an integer scale (0 to 256).
+  // Later, we can use bitwise shift (>> 8) instead of division, which is much faster.
+  int fade_scale = (int)(alpha * 256);
+
+  int w = frame->width;
+  int h = frame->height;
+
+  // In YUV, Y=0 is Black, Y=255 is White.
+  // To fade to black, we simply scale the Y value towards 0.
+  for (int y = 0; y < h; y++) {
+    uint8_t* row = frame->data[0] + (y * frame->linesize[0]);
+    for (int x = 0; x < w; x++) {
+      // Logic: New_Y = Old_Y * alpha
+      // Implementation: (Pixel * 0..256) / 256
+      row[x] = (row[x] * fade_scale) >> 8;
+    }
+  }
+
+  // YUV420P Subsampling: Chroma planes are half the width and half the height.
+  int uv_h = h / 2;
+  int uv_w = w / 2;
+
+  // Loop through U (data[1]) and V (data[2])
+  for (int i = 1; i < 3; i++) { 
+    for (int y = 0; y < uv_h; y++) {
+      uint8_t* row = frame->data[i] + (y * frame->linesize[i]);
+      for (int x = 0; x < uv_w; x++) {
+        
+        // --- The "Fade to Gray" Logic ---
+        // Unlike RGB where Black is (0,0,0), in YUV "Black" is (Y=0, U=128, V=128).
+        // 128 is the "neutral" point (no color saturation).
+        // If we scaled U/V to 0, the image would turn Green, not Black/Gray.
+        
+        // 1. Shift origin to 0 (subtract 128)
+        int val = row[x] - 128;
+        
+        // 2. Scale towards 0 (reduce saturation)
+        val = (val * fade_scale) >> 8;
+        
+        // 3. Shift origin back to 128
+        row[x] = (uint8_t)(val + 128);
+      }
+    }
+  }
+}
+
+void 
+mml_frame_rotate(AVFrame* base, AVFrame** work, float angle) 
+{
+  if (!base) return;
+
+  if (*work == NULL) 
+  {
+    *work = av_frame_alloc();
+    (*work)->format = AV_PIX_FMT_YUV420P;
+    (*work)->width = base->width;
+    (*work)->height = base->height;
+    av_frame_get_buffer(*work, 32);
+  }
+
+  // Convert degree to radian
+  float rad = angle * M_PI / 180.0f;
+
+  mml_plane_rotate(base->data[0], (*work)->data[0], base->linesize[0], 
+                   base->width, base->height, rad, 0);
+
+  // Rotate Chroma (U/V)
+  // YUV420P: Chroma is half size
+  // Background color 128 (Gray/Neutral)
+  mml_plane_rotate(base->data[1], (*work)->data[1], base->linesize[1], 
+                   base->width / 2, base->height / 2, rad, 128);
+
+  mml_plane_rotate(base->data[2], (*work)->data[2], base->linesize[2], 
+                   base->width / 2, base->height / 2, rad, 128);
+}
+
+/*!
+** @brief Performs a "Wipe" transition effect (Left to Right) on a video frame.
+**
+** This function copies pixels from the source frame up to a specific horizontal 
+** point determined by 'progress'. The rest of the frame is filled with black.
+**
+** @note This implementation assumes **AV_PIX_FMT_YUV420P**.
+**
+** @param src       [In] The source frame containing the full image.
+** @param work      [In/Out] Double pointer to the working frame (canvas).
+**                  If *work is NULL, it will be allocated automatically.
+** @param progress  Animation progress from 0.0 (All Black) to 1.0 (Full Image).
+*/
+void 
+mml_frame_wipe(AVFrame* src, AVFrame** work, float progress) 
+{
+  if (*work == NULL) 
+  {
+    *work = av_frame_alloc();
+    (*work)->format = AV_PIX_FMT_YUV420P;
+    (*work)->width = src->width;
+    (*work)->height = src->height;
+    av_frame_get_buffer(*work, 32);
+  }
+  // progress: 0.0 (All Black) -> 1.0 (All Image)
+  
+  // 1. Calculate Split X coordinate
+  int split_x = (int)(src->width * progress);
+  
+  // Clamp
+  if (split_x < 0) split_x = 0;
+  if (split_x > src->width) split_x = src->width;
+
+  int h = src->height;
+  int w = src->width;
+
+  // 2. Process Luma (Y)
+  // We use memcpy for the visible part and memset for the hidden part.
+  // This is much faster than setting pixels one by one.
+  for (int y = 0; y < h; y++) {
+    uint8_t* src_row = src->data[0] + (y * src->linesize[0]);
+    uint8_t* dst_row = (*work)->data[0] + (y * (*work)->linesize[0]);
+
+    // Copy the "Revealed" part
+    if (split_x > 0) {
+      memcpy(dst_row, src_row, split_x);
+    }
+
+    // Black out the "Hidden" part (Y=0)
+    if (split_x < w) {
+      memset(dst_row + split_x, 0, w - split_x);
+    }
+  }
+
+  // 3. Process Chroma (U/V)
+  // YUV420P: Chroma width is half of Luma width
+  int uv_h = h / 2;
+  int uv_w = w / 2;
+  int uv_split = split_x / 2; // Split point also scales down
+
+  for (int i = 1; i < 3; i++) {
+    for (int y = 0; y < uv_h; y++) {
+      uint8_t* src_row = src->data[i] + (y * src->linesize[i]);
+      uint8_t* dst_row = (*work)->data[i] + (y * (*work)->linesize[i]);
+
+      // Copy Revealed
+      if (uv_split > 0) {
+        memcpy(dst_row, src_row, uv_split);
+      }
+
+      // Fill Hidden (Neutral Gray = 128)
+      if (uv_split < uv_w) {
+        memset(dst_row + uv_split, 128, uv_w - uv_split);
       }
     }
   }

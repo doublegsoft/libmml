@@ -216,6 +216,46 @@ target_link_libraries(test_mml_image_frame PRIVATE
   mml
 )
 
+add_executable(test_mml_frame_rotate
+  "test/test_mml_frame_rotate.c"
+)
+
+target_link_libraries(test_mml_frame_rotate PRIVATE
+  mml
+)
+
+add_executable(test_mml_frame_wipe
+  "test/test_mml_frame_wipe.c"
+)
+
+target_link_libraries(test_mml_frame_wipe PRIVATE
+  mml
+)
+
+add_executable(test_mml_frame_flash
+  "test/test_mml_frame_flash.c"
+)
+
+target_link_libraries(test_mml_frame_flash PRIVATE
+  mml
+)
+
+add_executable(test_mml_frame_pixelate
+  "test/test_mml_frame_pixelate.c"
+)
+
+target_link_libraries(test_mml_frame_pixelate PRIVATE
+  mml
+)
+
+add_executable(test_mml_frame_blur
+  "test/test_mml_frame_blur.c"
+)
+
+target_link_libraries(test_mml_frame_blur PRIVATE
+  mml
+)
+
 add_executable(zoom
   "test/zoom.c"
 )
@@ -229,14 +269,6 @@ add_executable(magnify
 )
 
 target_link_libraries(magnify PRIVATE
-  mml
-)
-
-add_executable(blur
-  "test/blur.c"
-)
-
-target_link_libraries(blur PRIVATE
   mml
 )
 

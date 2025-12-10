@@ -15,6 +15,23 @@ extern "C"
 #endif
 
 #include <stdlib.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+
+/*!
+** @brief Rotates a single plane (Y, U, or V) using Nearest Neighbor interpolation.
+** 
+** @param src_data  Source pixel buffer.
+** @param dst_data  Destination pixel buffer.
+** @param stride    Line size (stride).
+** @param w         Width of the plane.
+** @param h         Height of the plane.
+** @param angle_rad Angle in radians.
+** @param bg_color  Color to fill empty corners (background).
+*/
+void 
+mml_plane_rotate(uint8_t* src_data, uint8_t* dst_data, int stride, 
+                 int w, int h, float angle_rad, uint8_t bg_color);
 
 /*！
 ** 核心算法：生成旋转并混合过渡的一帧画面
