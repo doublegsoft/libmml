@@ -28,82 +28,6 @@
 #define FLASH_DURATION_FRAMES 15 // Short, sharp flash
 
 // -----------------------------------------------------------------------------
-// Helper: Apply Flash to YUV Data
-// -----------------------------------------------------------------------------
-/**
-* @brief Blends a frame towards White based on intensity.
-* 
-* @param src       Source frame (Original Image).
-* @param work      [In/Out] Destination frame.
-* @param intensity 0.0 (Normal) -> 1.0 (Full White).
-*/
-int 
-mml_frame_flash(AVFrame* src, AVFrame** work, float intensity) 
-{
-  // 1. Lazy Allocation
-  if (*work == NULL) {
-    *work = av_frame_alloc();
-    if (!*work) return -1;
-    (*work)->format = AV_PIX_FMT_YUV420P;
-    (*work)->width  = src->width;
-    (*work)->height = src->height;
-    if (av_frame_get_buffer(*work, 32) < 0) return -1;
-  }
-
-  // Optimize: If intensity is 0, just copy
-  if (intensity <= 0.001f) {
-    av_frame_copy(*work, src);
-    return 0;
-  }
-
-  // 2. Prepare Math (Fixed Point)
-  // Scale factor: 0 to 256
-  int scale = (int)(intensity * 256);
-  if (scale > 256) scale = 256;
-
-  int h = src->height;
-  int w = src->width;
-
-  // --------------------------------------------------------------------------
-  // 3. Process Luma (Y) -> Fade to 255 (White)
-  // --------------------------------------------------------------------------
-  for (int y = 0; y < h; y++) {
-    uint8_t* s_row = src->data[0] + (y * src->linesize[0]);
-    uint8_t* d_row = (*work)->data[0] + (y * (*work)->linesize[0]);
-
-    for (int x = 0; x < w; x++) {
-      int pixel = s_row[x];
-      // Formula: P_new = P_old + (255 - P_old) * intensity
-      // Integer: P_old + ((255 - P_old) * scale >> 8)
-      int diff = 255 - pixel;
-      d_row[x] = (uint8_t)(pixel + ((diff * scale) >> 8));
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // 4. Process Chroma (U/V) -> Fade to 128 (Neutral)
-  // --------------------------------------------------------------------------
-  int uv_h = h / 2;
-  int uv_w = w / 2;
-
-  for (int i = 1; i < 3; i++) {
-    for (int y = 0; y < uv_h; y++) {
-      uint8_t* s_row = src->data[i] + (y * src->linesize[i]);
-      uint8_t* d_row = (*work)->data[i] + (y * (*work)->linesize[i]);
-
-      for (int x = 0; x < uv_w; x++) {
-        int pixel = s_row[x];
-        // Target is 128. Diff can be positive or negative.
-        int diff = 128 - pixel; 
-        d_row[x] = (uint8_t)(pixel + ((diff * scale) >> 8));
-      }
-    }
-  }
-
-  return 0;
-}
-
-// -----------------------------------------------------------------------------
 // Main
 // -----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
@@ -114,21 +38,10 @@ int main(int argc, char* argv[]) {
   mml_image_frame(image_path, &base_frame);
 
   AVFormatContext* out_fmt = NULL;
-  avformat_alloc_output_context2(&out_fmt, NULL, NULL, OUT_FILE);
-  const AVCodec* enc = avcodec_find_encoder(AV_CODEC_ID_H264);
-  AVCodecContext* enc_ctx = avcodec_alloc_context3(enc);
-  enc_ctx->width = base_frame->width;
-  enc_ctx->height = base_frame->height;
-  enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
-  enc_ctx->time_base = (AVRational){1, FPS};
-  enc_ctx->framerate = (AVRational){FPS, 1};
-  if (out_fmt->oformat->flags & AVFMT_GLOBALHEADER) enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-  avcodec_open2(enc_ctx, enc, NULL);
-  AVStream* out_st = avformat_new_stream(out_fmt, NULL);
-  avcodec_parameters_from_context(out_st->codecpar, enc_ctx);
-  out_st->time_base = enc_ctx->time_base;
-  avio_open(&out_fmt->pb, OUT_FILE, AVIO_FLAG_WRITE);
-  avformat_write_header(out_fmt, NULL);
+  AVCodecContext* enc_ctx = NULL; 
+  AVStream* out_st = NULL; 
+
+  mml_image_load(image_path, &base_frame, OUT_FILE, &out_fmt, &enc_ctx, &out_st);
 
   AVFrame* work_frame = NULL; // Lazy allocated in helper
   int total_frames = 60;      // 2 seconds total

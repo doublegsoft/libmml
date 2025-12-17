@@ -16,36 +16,34 @@
 #include <stb_image.h>
 
 #include "libmml-image.h"
+#include "libmml-error.h"
 
+// uint8_t* 
+// mml_image_load(const char* filename, int target_w, int target_h) 
+// {
+//   int w, h, c;
+//   unsigned char* raw_data = stbi_load(filename, &w, &h, &c, 3);
+//   if (!raw_data) return NULL;
 
+//   // 分配目标内存 (RGB24 = 3 bytes per pixel)
+//   uint8_t* resized_data = (uint8_t*)malloc(target_w * target_h * 3);
 
-
-uint8_t* 
-mml_image_load(const char* filename, int target_w, int target_h) 
-{
-  int w, h, c;
-  unsigned char* raw_data = stbi_load(filename, &w, &h, &c, 3);
-  if (!raw_data) return NULL;
-
-  // 分配目标内存 (RGB24 = 3 bytes per pixel)
-  uint8_t* resized_data = (uint8_t*)malloc(target_w * target_h * 3);
-
-  // 使用 sws_scale 进行简单的缩放 (RGB -> RGB)
-  struct SwsContext* sws = sws_getContext(w, h, AV_PIX_FMT_RGB24,
-                                          target_w, target_h, AV_PIX_FMT_RGB24,
-                                          SWS_BILINEAR, NULL, NULL, NULL);
+//   // 使用 sws_scale 进行简单的缩放 (RGB -> RGB)
+//   struct SwsContext* sws = sws_getContext(w, h, AV_PIX_FMT_RGB24,
+//                                           target_w, target_h, AV_PIX_FMT_RGB24,
+//                                           SWS_BILINEAR, NULL, NULL, NULL);
   
-  const uint8_t* srcSlice[] = { raw_data };
-  int srcStride[] = { w * 3 };
-  uint8_t* dstSlice[] = { resized_data };
-  int dstStride[] = { target_w * 3 };
+//   const uint8_t* srcSlice[] = { raw_data };
+//   int srcStride[] = { w * 3 };
+//   uint8_t* dstSlice[] = { resized_data };
+//   int dstStride[] = { target_w * 3 };
 
-  sws_scale(sws, srcSlice, srcStride, 0, h, dstSlice, dstStride);
+//   sws_scale(sws, srcSlice, srcStride, 0, h, dstSlice, dstStride);
 
-  sws_freeContext(sws);
-  stbi_image_free(raw_data);
-  return resized_data;
-}
+//   sws_freeContext(sws);
+//   stbi_image_free(raw_data);
+//   return resized_data;
+// }
 
 int 
 mml_image_frame(const char*  filename, 
@@ -142,3 +140,35 @@ cleanup:
 
   return ret;
 }  
+
+
+int 
+mml_image_load(const char*          filename, 
+               AVFrame**            out_frame,
+               const char*          out_path,
+               AVFormatContext**    ofmt_ctx,
+               AVCodecContext**     enc_ctx,
+               AVStream**           out_stream)
+{
+  int ret = MML_SUCCESS;
+  mml_image_frame(filename, out_frame);
+
+  avformat_alloc_output_context2(ofmt_ctx, NULL, NULL, out_path);
+  const AVCodec* enc = avcodec_find_encoder(AV_CODEC_ID_H264);
+  *enc_ctx = avcodec_alloc_context3(enc);
+  (*enc_ctx)->width = (*out_frame)->width;
+  (*enc_ctx)->height = (*out_frame)->height;
+  (*enc_ctx)->pix_fmt = AV_PIX_FMT_YUV420P;
+  (*enc_ctx)->time_base = (AVRational){1, 30};
+  (*enc_ctx)->framerate = (AVRational){30, 1};
+  if ((*ofmt_ctx)->oformat->flags & AVFMT_GLOBALHEADER) 
+    (*enc_ctx)->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+  avcodec_open2(*enc_ctx, enc, NULL);
+  *out_stream = avformat_new_stream(*ofmt_ctx, NULL);
+  avcodec_parameters_from_context((*out_stream)->codecpar, *enc_ctx);
+  (*out_stream)->time_base = (*enc_ctx)->time_base;
+  avio_open(&(*ofmt_ctx)->pb, out_path, AVIO_FLAG_WRITE);
+  avformat_write_header(*ofmt_ctx, NULL);
+
+  return ret;
+}

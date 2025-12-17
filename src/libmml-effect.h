@@ -33,6 +33,9 @@ void
 mml_plane_rotate(uint8_t* src_data, uint8_t* dst_data, int stride, 
                  int w, int h, float angle_rad, uint8_t bg_color);
 
+void 
+mml_plane_pixelate(uint8_t* data, int linesize, int width, int height, int block_size);
+
 /*！
 ** 核心算法：生成旋转并混合过渡的一帧画面
 **

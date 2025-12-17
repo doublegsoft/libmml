@@ -208,11 +208,27 @@ target_link_libraries(test_mml_video_grid PRIVATE
   mml
 )
 
+add_executable(test_mml_video_scroll
+  "test/test_mml_video_scroll.c"
+)
+
+target_link_libraries(test_mml_video_scroll PRIVATE
+  mml
+)
+
 add_executable(test_mml_image_frame
   "test/test_mml_image_frame.c"
 )
 
 target_link_libraries(test_mml_image_frame PRIVATE
+  mml
+)
+
+add_executable(test_mml_image_concat
+  "test/test_mml_image_concat.c"
+)
+
+target_link_libraries(test_mml_image_concat PRIVATE
   mml
 )
 
@@ -245,6 +261,14 @@ add_executable(test_mml_frame_pixelate
 )
 
 target_link_libraries(test_mml_frame_pixelate PRIVATE
+  mml
+)
+
+add_executable(test_mml_frame_pixelarea
+  "test/test_mml_frame_pixelarea.c"
+)
+
+target_link_libraries(test_mml_frame_pixelarea PRIVATE
   mml
 )
 

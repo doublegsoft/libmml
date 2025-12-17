@@ -76,14 +76,14 @@ int main(int argc, char** argv) {
   int64_t global_pts = 0;
   
   // 加载第一张图
-  uint8_t* img_current = mml_image_load(imgs[0], OUT_WIDTH, OUT_HEIGHT);
+  uint8_t* img_current = NULL; // mml_image_load(imgs[0], OUT_WIDTH, OUT_HEIGHT);
   if (!img_current) return 1;
 
   // --- Main Loop ---
   for (int i = 1; i < 4; i++) {
     uint8_t* img_next = NULL;
     if (i + 1 < 4) {
-      img_next = mml_image_load(imgs[i], OUT_WIDTH, OUT_HEIGHT);
+      img_next = NULL; // mml_image_load(imgs[i], OUT_WIDTH, OUT_HEIGHT);
     }
 
     // 2. 显示静止画面 (Static)

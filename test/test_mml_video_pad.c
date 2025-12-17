@@ -149,36 +149,13 @@ int main(int argc, char* argv[])
       SWS_BICUBIC, NULL, NULL, NULL);
 
   // 4. Loop
-  while (av_read_frame(in_fmt, pkt) >= 0) {
+  while (av_read_frame(in_fmt, pkt) >= 0) 
+  {
     if (pkt->stream_index == vid_idx) {
-      if (avcodec_send_packet(dec_ctx, pkt) == 0) {
-        while (avcodec_receive_frame(dec_ctx, src_frame) == 0) {
-          
-          // Step A: Make sure destination is writable and Black
-          // av_frame_make_writable(dst_frame);
-          // fill_frame_black(dst_frame);
-
-          // // We trick sws_scale to write into the middle of dst_frame
-          // uint8_t* dst_data[4];
-          // int dst_linesize[4];
-
-          // // Copy linesize from destination frame (Stride must remain full width)
-          // for (int i=0; i<4; i++) dst_linesize[i] = dst_frame->linesize[i];
-
-          // // Offset Y
-          // dst_data[0] = dst_frame->data[0] + (off_y * dst_frame->linesize[0]) + off_x;
-          
-          // // Offset U/V
-          // int uv_off_y = off_y / 2;
-          // int uv_off_x = off_x / 2;
-          // dst_data[1] = dst_frame->data[1] + (uv_off_y * dst_frame->linesize[1]) + uv_off_x;
-          // dst_data[2] = dst_frame->data[2] + (uv_off_y * dst_frame->linesize[2]) + uv_off_x;
-
-          // sws_scale(sws, 
-          //           (const uint8_t* const*)src_frame->data, src_frame->linesize,
-          //           0, src_frame->height,
-          //           dst_data, dst_linesize);
-
+      if (avcodec_send_packet(dec_ctx, pkt) == 0)
+      {
+        while (avcodec_receive_frame(dec_ctx, src_frame) == 0) 
+        {
           mml_frame_aspect(src_frame, &dst_frame, &sws, 
                            TARGET_W, TARGET_H,
                            new_w, new_h,

@@ -30,10 +30,10 @@ extern "C"
 ** @param target_h  目标高度 (通常是视频高度，如 480)
 ** @return uint8_t* 指向缩放后 RGB 数据的指针，如果加载失败返回 NULL
 */
-uint8_t* 
-mml_image_load(const char* filename, 
-               int target_w, 
-               int target_h);
+// uint8_t* 
+// mml_image_load(const char* filename, 
+//                int target_w, 
+//                int target_h);
 
 /**
  * @brief Decodes an image file into a raw FFmpeg AVFrame.
@@ -55,6 +55,29 @@ mml_image_load(const char* filename,
 int 
 mml_image_frame(const char*  filename, 
                 AVFrame**    out_frame);
+
+/*!
+** @brief Loads a static image and initializes a video encoding pipeline.
+**
+** This function performs two main tasks:
+** 1. Decodes an image file (JPG/PNG) into a raw AVFrame.
+** 2. Sets up an H.264 encoder and MP4 muxer with settings matching the image dimensions.
+**
+** @param filename   [In] Path to the source image file.
+** @param out_frame  [Out] Pointer to the decoded source frame.
+** @param out_path   [In] Path to the output video file (e.g., "output.mp4").
+** @param ofmt_ctx   [Out] Pointer to the Output Format Context (Muxer).
+** @param enc_ctx    [Out] Pointer to the Encoder Context.
+** @param out_stream [Out] Pointer to the Output Stream.
+** @return int       MML_SUCCESS (0) on success.
+*/                
+int 
+mml_image_load(const char*          filename, 
+               AVFrame**            out_frame,
+               const char*          out_path,
+               AVFormatContext**    ofmt_ctx,
+               AVCodecContext**     enc_ctx,
+               AVStream**           out_stream);
 
 #ifdef __cplusplus
 }

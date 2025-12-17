@@ -942,3 +942,86 @@ mml_frame_wipe(AVFrame* src, AVFrame** work, float progress)
     }
   }
 }
+
+int 
+mml_frame_flash(AVFrame* src, AVFrame** work, float intensity) 
+{
+  if (*work == NULL) {
+    *work = av_frame_alloc();
+    if (!*work) return -1;
+    (*work)->format = AV_PIX_FMT_YUV420P;
+    (*work)->width  = src->width;
+    (*work)->height = src->height;
+    if (av_frame_get_buffer(*work, 32) < 0) return -1;
+  }
+
+  if (intensity <= 0.001f) {
+    av_frame_copy(*work, src);
+    return 0;
+  }
+
+  int scale = (int)(intensity * 256);
+  if (scale > 256) scale = 256;
+
+  int h = src->height;
+  int w = src->width;
+
+  for (int y = 0; y < h; y++) {
+    uint8_t* s_row = src->data[0] + (y * src->linesize[0]);
+    uint8_t* d_row = (*work)->data[0] + (y * (*work)->linesize[0]);
+
+    for (int x = 0; x < w; x++) {
+      int pixel = s_row[x];
+      // Formula: P_new = P_old + (255 - P_old) * intensity
+      // Integer: P_old + ((255 - P_old) * scale >> 8)
+      int diff = 255 - pixel;
+      d_row[x] = (uint8_t)(pixel + ((diff * scale) >> 8));
+    }
+  }
+
+  int uv_h = h / 2;
+  int uv_w = w / 2;
+
+  for (int i = 1; i < 3; i++) {
+    for (int y = 0; y < uv_h; y++) {
+      uint8_t* s_row = src->data[i] + (y * src->linesize[i]);
+      uint8_t* d_row = (*work)->data[i] + (y * (*work)->linesize[i]);
+
+      for (int x = 0; x < uv_w; x++) {
+        int pixel = s_row[x];
+        // Target is 128. Diff can be positive or negative.
+        int diff = 128 - pixel; 
+        d_row[x] = (uint8_t)(pixel + ((diff * scale) >> 8));
+      }
+    }
+  }
+
+  return 0;
+}
+
+void 
+mml_frame_pixelate(AVFrame* src, AVFrame** work, int block_size) 
+{
+  if (*work == NULL)
+  {
+    *work = av_frame_alloc();
+    (*work)->format = AV_PIX_FMT_YUV420P;
+    (*work)->width = src->width;
+    (*work)->height = src->height;
+    av_frame_get_buffer((*work), 32);
+  }
+  if (block_size < 2) return;
+  
+  // Force even block size (round down)
+  if (block_size % 2 != 0) block_size--; 
+
+  av_frame_copy(*work, src);
+  mml_plane_pixelate((*work)->data[0], (*work)->linesize[0], (*work)->width, (*work)->height, block_size);
+
+  int uv_w = (*work)->width / 2;
+  int uv_h = (*work)->height / 2;
+  int uv_block = block_size / 2;
+
+  mml_plane_pixelate((*work)->data[1], (*work)->linesize[1], uv_w, uv_h, uv_block);
+  mml_plane_pixelate((*work)->data[2], (*work)->linesize[2], uv_w, uv_h, uv_block);
+}

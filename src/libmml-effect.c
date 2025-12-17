@@ -44,6 +44,52 @@ mml_plane_rotate(uint8_t* src_data, uint8_t* dst_data, int stride,
   }
 }
 
+/*!
+** @brief Applies a pixelation (mosaic) effect to a single memory plane.
+**
+** This function divides the plane into a grid of blocks. For each block, it 
+** calculates the average pixel value and fills the entire block with that value.
+**
+** @note This function is generic and can be used for the Y plane (Luma) or 
+**       the U/V planes (Chroma) independently.
+**
+** @param data       Pointer to the start of the plane data (e.g., frame->data[0]).
+** @param linesize   The memory stride (width + padding) of the plane.
+** @param width      Width of the valid data in the plane.
+** @param height     Height of the valid data in the plane.
+** @param block_size The size of the mosaic square (e.g., 16 pixels).
+*/
+void 
+mml_plane_pixelate(uint8_t* data, int linesize, int width, int height, int block_size) 
+{
+  if (block_size <= 1) return; // No pixelation needed
+
+  for (int y = 0; y < height; y += block_size) {
+    for (int x = 0; x < width; x += block_size) {
+      
+      int bw = block_size;
+      int bh = block_size;
+      if (x + bw > width)  bw = width - x;
+      if (y + bh > height) bh = height - y;
+
+      unsigned int sum = 0;
+      for (int by = 0; by < bh; by++) {
+        uint8_t* row = data + ((y + by) * linesize);
+        for (int bx = 0; bx < bw; bx++) {
+          sum += row[x + bx];
+        }
+      }
+      uint8_t avg = (uint8_t)(sum / (bw * bh));
+
+      // 3. Fill the block with average color
+      for (int by = 0; by < bh; by++) {
+        uint8_t* row = data + ((y + by) * linesize);
+        memset(row + x, avg, bw);
+      }
+    }
+  }
+}
+
 void 
 mml_effect_rotate(uint8_t* out, 
                   uint8_t* img_start, 

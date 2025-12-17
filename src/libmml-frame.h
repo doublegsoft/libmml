@@ -71,6 +71,27 @@ mml_frame_write(AVCodecContext* enc_ctx,
 int 
 mml_frame_resize(AVFrame* src, AVFrame** dst, struct SwsContext** sws, int width, int height);    
 
+/*!
+** @brief Resizes an input frame to fit into a destination canvas while maintaining aspect ratio.
+**
+** This function performs "Letterboxing" or "Pillarboxing". It scales the input image
+** to a specific size (`pic_width` x `pic_height`) and places it at a specific offset
+** within a larger canvas (`frame_width` x `frame_height`), filling the background with black.
+**
+** @note **Format Constraint**: This function logic (memset 0/128 and subsampling math) 
+**       assumes the pixel format is **AV_PIX_FMT_YUV420P**.
+**
+** @param src           [In] Source frame.
+** @param dst           [In/Out] Pointer to destination frame. Lazy allocation supported.
+** @param sws           [In/Out] Pointer to SwsContext. Created if NULL.
+** @param frame_width   Width of the final output canvas (e.g., 1920).
+** @param frame_height  Height of the final output canvas (e.g., 1080).
+** @param pic_width     Width of the scaled actual image (e.g., 1440).
+** @param pic_height    Height of the scaled actual image (e.g., 1080).
+** @param offset_x      Horizontal offset to center the image (should be even).
+** @param offset_y      Vertical offset to center the image (should be even).
+** @return int          0 on success, negative AVERROR on failure.
+*/
 int 
 mml_frame_aspect(AVFrame* src, 
                  AVFrame** dst, 
@@ -219,7 +240,9 @@ void mml_frame_fade(AVFrame* frame,
 ** @return int   0 on success, -1 on error.
 */
 void 
-mml_frame_rotate(AVFrame* base, AVFrame** work, float angle);
+mml_frame_rotate(AVFrame* base, 
+                 AVFrame** work, 
+                 float angle);
 
 /*!
 ** @brief Performs a "Wipe" transition effect (Left to Right) on a video frame.
@@ -235,7 +258,44 @@ mml_frame_rotate(AVFrame* base, AVFrame** work, float angle);
 ** @param progress  Animation progress from 0.0 (All Black) to 1.0 (Full Image).
 */
 void 
-mml_frame_wipe(AVFrame* src, AVFrame** work, float progress);
+mml_frame_wipe(AVFrame* src, 
+               AVFrame** work, 
+               float progress);
+
+/*!
+** @brief Applies a "Flash" or "Whiteout" effect to a video frame.
+**
+** This function blends the source image towards "Pure White" based on the intensity.
+** - Luma (Y) is blended towards 255 (Maximum Brightness).
+** - Chroma (U/V) is blended towards 128 (No Color/Grayscale).
+**
+** @note This implementation assumes **AV_PIX_FMT_YUV420P**.
+**
+** @param src       [In] The source frame (Original image).
+** @param work      [In/Out] Double pointer to the destination frame. 
+**                  If *work is NULL, it will be allocated automatically (Lazy Allocation).
+** @param intensity Float value from 0.0 (No Flash) to 1.0 (Full White).
+** @return int      0 on success, -1 on allocation failure.
+*/
+int 
+mml_frame_flash(AVFrame* src, 
+                AVFrame** work, 
+                float intensity);
+
+/*!
+** @brief Applies a pixelation (mosaic) effect to a complete YUV420P video frame.
+**
+** This function handles the specific structural requirements of YUV420P:
+** 1. The Luma plane (Y) is processed at full resolution.
+** 2. The Chroma planes (U/V) are processed at half resolution.
+** 3. The block size is forced to be even to ensure alignment between Luma and Chroma blocks.
+**
+** @param frame      [In/Out] The target frame to modify. Must be AV_PIX_FMT_YUV420P.
+** @param block_size The desired size of the mosaic squares (in Luma pixels). 
+**                   If odd, it will be rounded down to the nearest even number.
+*/
+void 
+mml_frame_pixelate(AVFrame* src, AVFrame** work, int block_size);
 
 #ifdef __cplusplus
 }
