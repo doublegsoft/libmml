@@ -36,7 +36,8 @@ mml_pixel_yuv(AVFrame* frame,
               int y, 
               uint8_t y_val, 
               uint8_t u_val, 
-              uint8_t v_val);
+              uint8_t v_val,
+              float alpha);
 
 #ifdef __cplusplus
 }

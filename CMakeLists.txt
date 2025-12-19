@@ -50,7 +50,7 @@ include_directories(
 )
 
 link_directories(
-  "/opt/homebrew/Cellar/ffmpeg/8.0_1/lib"
+  "/opt/homebrew/Cellar/ffmpeg/8.0.1/lib"
   # "${FFMPEG_DIR}/${BUILD}/libavcodec"
   # "${FFMPEG_DIR}/${BUILD}/libavdevice"
   # "${FFMPEG_DIR}/${BUILD}/libavfilter"
@@ -184,6 +184,14 @@ target_link_libraries(test_mml_shape_ellipse PRIVATE
   mml
 )
 
+add_executable(test_mml_shape_quad
+  "test/test_mml_shape_quad.c"
+)
+
+target_link_libraries(test_mml_shape_quad PRIVATE
+  mml
+)
+
 add_executable(test_mml_video_slow
   "test/test_mml_video_slow.c"
 )
@@ -301,5 +309,13 @@ add_executable(crack
 )
 
 target_link_libraries(crack PRIVATE
+  mml
+)
+
+add_executable(alpha
+  "test/alpha.c"
+)
+
+target_link_libraries(alpha PRIVATE
   mml
 )

@@ -29,31 +29,43 @@ extern "C"
 ** @param y_val       颜色的 Y 分量
 ** @param u_val       颜色的 U 分量
 ** @param v_val       颜色的 V 分量
+** @param alpha       透明度
 */
 void 
-mml_shape_ellipse_draw(AVFrame* frame, 
-                       int cx, 
-                       int cy, 
-                       int rx, 
-                       int ry, 
-                       int thickness, 
-                       uint8_t y_val, 
-                       uint8_t u_val, 
-                       uint8_t v_val);
+mml_shape_ellipse(AVFrame* frame, 
+                  int cx, 
+                  int cy, 
+                  int rx, 
+                  int ry, 
+                  int thickness, 
+                  uint8_t y_val, 
+                  uint8_t u_val, 
+                  uint8_t v_val,
+                  float alpha);
 
+/*！
+** @brief 在 YUV 帧上绘制任意四边形 (P1-P2-P3-P4-P1)。
+** 
+** @param frame      目标帧 (需为 YUV420P)。
+** @param x1,y1      点 1 坐标。
+** @param x2,y2      点 2 坐标。
+** @param x3,y3      点 3 坐标。
+** @param x4,y4      点 4 坐标。
+** @param thickness  线条粗细 (像素)。
+** @param y_val, u_val, v_val  YUV 颜色分量。
+** @param alpha      透明度 (0.0 - 1.0)。
+*/
 void 
-mml_shape_ellipse_move(AVFrame* frame, 
-                       int start_cx, 
-                       int start_cy,
-                       int end_cx, 
-                       int end_cy,  
-                       int rx, 
-                       int ry, 
-                       int thickness, 
-                       uint8_t y_val, 
-                       uint8_t u_val, 
-                       uint8_t v_val,
-                       double seconds);
+mml_shape_quad(AVFrame* frame, 
+               int x1, int y1, 
+               int x2, int y2, 
+               int x3, int y3, 
+               int x4, int y4,
+               int thickness, 
+               uint8_t y_val, 
+               uint8_t u_val, 
+               uint8_t v_val,
+               float alpha);
 
 #ifdef __cplusplus
 }
