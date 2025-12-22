@@ -31,11 +31,11 @@
 #include "libmml-error.h"
 
 // Configuration
-#define SLOW_FACTOR 5 
+#define SLOW_FACTOR 8
 #define OUT_FILENAME "output_slow.mp4"
  
 int main(int argc, char* argv[]) {
-  const char* in_filename = "../../data/V3.10.mp4";
+  const char* in_filename = "../../data/o3.mp4";
 
   AVFormatContext* ifmt_ctx = NULL;
   AVFormatContext* ofmt_ctx = NULL;

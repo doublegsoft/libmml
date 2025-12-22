@@ -192,11 +192,11 @@ target_link_libraries(test_mml_shape_quad PRIVATE
   mml
 )
 
-add_executable(test_mml_video_slow
-  "test/test_mml_video_slow.c"
+add_executable(test_mml_shape_ring
+  "test/test_mml_shape_ring.c"
 )
 
-target_link_libraries(test_mml_video_slow PRIVATE
+target_link_libraries(test_mml_shape_ring PRIVATE
   mml
 )
 
@@ -205,6 +205,22 @@ add_executable(test_mml_shape_arrow
 )
 
 target_link_libraries(test_mml_shape_arrow PRIVATE
+  mml
+)
+
+add_executable(test_mml_shape_line
+  "test/test_mml_shape_line.c"
+)
+
+target_link_libraries(test_mml_shape_line PRIVATE
+  mml
+)
+
+add_executable(test_mml_video_slow
+  "test/test_mml_video_slow.c"
+)
+
+target_link_libraries(test_mml_video_slow PRIVATE
   mml
 )
 
@@ -221,6 +237,14 @@ add_executable(test_mml_video_scroll
 )
 
 target_link_libraries(test_mml_video_scroll PRIVATE
+  mml
+)
+
+add_executable(test_mml_video_reverse
+  "test/test_mml_video_reverse.c"
+)
+
+target_link_libraries(test_mml_video_reverse PRIVATE
   mml
 )
 

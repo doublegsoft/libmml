@@ -10,6 +10,7 @@
 
 #include <libavutil/frame.h>
 
+#include "libmml-util.h"
 #include "libmml-shape.h"
 #include "libmml-pixel.h"
 
@@ -223,6 +224,128 @@ mml_shape_quad(AVFrame* frame,
 
       if (draw) {
         mml_pixel_yuv(frame, x, y, y_val, u_val, v_val, final_alpha);
+      }
+    }
+  }
+}
+
+/**
+ * @brief 绘制带光晕效果的椭圆环 (仿足球转播战术板效果)。
+ *
+ * @param frame      目标帧。
+ * @param cx, cy     中心坐标 (球员脚下)。
+ * @param rx, ry     X轴和Y轴半径。通常 ry = 0.3 * rx 以符合透视。
+ * @param thickness  光晕宽度控制 (建议 0.1 - 0.3，值越大越粗/越虚)。
+ * @param y, u, v    颜色。
+ * @param max_alpha  最大不透明度 (0.0 - 1.0)。建议 0.8。
+ */
+void 
+mml_shape_ring(AVFrame* frame, 
+               int cx, int cy, 
+               int rx, int ry, 
+               float thickness, 
+               uint8_t col_y, uint8_t col_u, uint8_t col_v, 
+               float max_alpha) 
+{
+  if (rx <= 0 || ry <= 0) return;
+
+  // 1. 预计算倒数平方，避免循环中做除法
+  float rx2_inv = 1.0f / (float)(rx * rx);
+  float ry2_inv = 1.0f / (float)(ry * ry);
+
+  // 2. 确定包围盒 (Bounding Box)
+  // 稍微扩大范围以容纳光晕的边缘
+  int margin = (int)(rx * thickness * 2.0f) + 5; 
+  
+  int min_x = cx - rx - margin;
+  int max_x = cx + rx + margin;
+  int min_y = cy - ry - margin;
+  int max_y = cy + ry + margin;
+
+  // 边界裁剪
+  if (min_x < 0) min_x = 0;
+  if (min_y < 0) min_y = 0;
+  if (max_x >= frame->width) max_x = frame->width;
+  if (max_y >= frame->height) max_y = frame->height;
+
+  // 3. 扫描并绘制
+  for (int y = min_y; y < max_y; y++) {
+    
+    // 优化：预计算 Y 部分
+    float dy = (float)(y - cy);
+    float term_y = (dy * dy) * ry2_inv;
+
+    for (int x = min_x; x < max_x; x++) {
+      float dx = (float)(x - cx);
+      
+      // 椭圆方程值: V = x^2/a^2 + y^2/b^2
+      // V = 1.0 时在线上; V < 1 在内部; V > 1 在外部
+      float val = (dx * dx) * rx2_inv + term_y;
+
+      // 计算距离 "1.0" (轮廓线) 的偏差
+      // 我们希望在 1.0 附近产生高 Alpha 值
+      float diff = fabsf(val - 1.0f);
+
+      // 阈值判断：如果离轮廓太远，就不画，节省性能
+      if (diff > thickness) continue;
+
+      // --- 核心：光晕计算 ---
+      // 使用高斯分布公式或简单的线性衰减
+      // 这里使用余弦衰减，能够产生非常平滑的类似激光的边缘
+      // 将 diff 映射到 0..PI/2
+      float ratio = diff / thickness; // 0.0 (中心) -> 1.0 (边缘)
+      
+      // 衰减函数: cos(ratio * PI/2) ^ 2
+      // 这种曲线比线性 (1-ratio) 看起来更有“光感”
+      float glow = cosf(ratio * 1.570796f);
+      glow = glow * glow; 
+
+      float final_alpha = max_alpha * glow;
+
+      // 绘制像素
+      mml_pixel_yuv(frame, x, y, col_y, col_u, col_v, final_alpha);
+    }
+  }
+} 
+
+void 
+mml_shape_line(AVFrame* frame, 
+               int x1, int y1, int x2, int y2, 
+               int thickness, 
+               uint8_t y_val, uint8_t u_val, uint8_t v_val, 
+               float alpha) 
+{
+  // 1. Determine Bounding Box (Optimization)
+  int min_x = (x1 < x2 ? x1 : x2) - thickness;
+  int max_x = (x1 > x2 ? x1 : x2) + thickness;
+  int min_y = (y1 < y2 ? y1 : y2) - thickness;
+  int max_y = (y1 > y2 ? y1 : y2) + thickness;
+
+  // Clamp
+  if (min_x < 0) min_x = 0;
+  if (min_y < 0) min_y = 0;
+  if (max_x >= frame->width) max_x = frame->width;
+  if (max_y >= frame->height) max_y = frame->height;
+
+  float radius_sq = (thickness * 0.5f) * (thickness * 0.5f);
+
+  // 2. Iterate pixels
+  for (int y = min_y; y < max_y; y++) {
+    for (int x = min_x; x < max_x; x++) {
+      
+      // Calculate distance to the line segment
+      float d_sq = mml_segment_dist(x, y, x1, y1, x2, y2);
+
+      if (d_sq <= radius_sq) {
+        float draw_alpha = alpha;
+
+        // Anti-aliasing (Soft Edges)
+        // If distance is within the last 1.0 pixel of the radius, fade out.
+        if (d_sq > radius_sq - 2.0f) {
+          draw_alpha *= 0.5f; 
+        }
+
+        mml_pixel_yuv(frame, x, y, y_val, u_val, v_val, draw_alpha);
       }
     }
   }

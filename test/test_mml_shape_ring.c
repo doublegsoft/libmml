@@ -10,77 +10,47 @@
 #include "libmml-video.h"
 
 // --- Configuration ---
-#define INPUT_FILENAME "../../data/V3.mp4"
-#define OUTPUT_FILENAME "output_quad.mp4"
+#define INPUT_FILENAME "../../data/G2.mp4"
+#define OUTPUT_FILENAME "output_ring.mp4"
 
+// Logic: Calculate ellipse position based on TIME (seconds), not raw PTS
 static void 
-draw_moving_quad(AVFrame* frame, double time_sec) {
+draw_moving_ring(AVFrame* frame, double time_sec) {
   int width = frame->width;
   int height = frame->height;
 
-  // --- 1. 计算中心点 (位移) ---
-  // 与椭圆类似的平滑运动轨迹
+  // Ellipse Dimensions
+  int rx = width / 12; // Radius X
+  int ry = height / 12; // Radius Y
+
+  // --- SMOOTH MOVEMENT MATH ---
+  // Using time_sec ensures smooth 60fps or 24fps movement.
+  // sin(time * speed): Speed 1.0 = 1 radian per second.
+  
+  // X oscillates left-right
   int center_x = width / 2;
-  int center_y = height / 2;
   int range_x = width / 3;
+  int cx = center_x + (int)(range_x * sin(time_sec * 1.5));
+
+  // Y oscillates up-down (different speed for Lissajous effect)
+  int center_y = height / 2;
   int range_y = height / 4;
+  int cy = center_y + (int)(range_y * cos(time_sec * 2.0));
 
-  // 使用不同的相位速度，让它和椭圆错开
-  int cx = center_x + (int)(range_x * sin(time_sec * 1.2)); 
-  int cy = center_y + (int)(range_y * cos(time_sec * 1.7));
+  // Color: Bright Red (Y=81, U=90, V=240)
+  uint8_t col_y = 81;
+  uint8_t col_u = 90;
+  uint8_t col_v = 240;
 
-  // --- 2. 计算大小与旋转 ---
-  // 基础半径 (四边形中心到顶点的距离)
-  double base_radius = width / 10.0;
-  
-  // 呼吸效果：半径随时间在 0.8x 到 1.2x 之间波动
-  double pulse = 1.0 + 0.2 * sin(time_sec * 4.0);
-  double current_radius = base_radius * pulse;
-
-  // 旋转角度：每秒转 1 弧度
-  double theta = time_sec * 1.0;
-
-  // --- 3. 计算四个顶点 (旋转矩形) ---
-  // 我们生成一个矩形，四个角相对于中心的偏移分别是 0, 90, 180, 270 度
-  // 加上 theta 实现旋转
-  
-  // Point 1
-  int x1 = cx + (int)(current_radius * cos(theta));
-  int y1 = cy + (int)(current_radius * sin(theta));
-
-  // Point 2 (+90度)
-  int x2 = cx + (int)(current_radius * cos(theta + M_PI / 2.0));
-  int y2 = cy + (int)(current_radius * sin(theta + M_PI / 2.0));
-
-  // Point 3 (+180度)
-  int x3 = cx + (int)(current_radius * cos(theta + M_PI));
-  int y3 = cy + (int)(current_radius * sin(theta + M_PI));
-
-  // Point 4 (+270度)
-  int x4 = cx + (int)(current_radius * cos(theta + 3.0 * M_PI / 2.0));
-  int y4 = cy + (int)(current_radius * sin(theta + 3.0 * M_PI / 2.0));
-
-  // --- 4. 颜色定义 ---
-  // 青色/蓝绿色 (Cyan/Teal)
-  // YUV 大致值: Y=170, U=166, V=16
-  uint8_t col_y = 170;
-  uint8_t col_u = 166;
-  uint8_t col_v = 16;
-
-  // --- 5. 绘制 ---
-  // 线宽 4，透明度 0.6
-  mml_shape_quad(frame, 
-                 x1, y1, x2, y2, x3, y3, x4, y4, 
-                 -1, 
-                 col_y, col_u, col_v, 
-                 0.6f);
+  mml_shape_ring(frame, cx, cy, 60, 20, 
+    0.25f, 
+    col_y, col_u, col_v, 0.8);
 }
 
 
 // --- Main Program ---
 
-int main(int argc, char** argv) 
-{
+int main(int argc, char** argv) {
   AVFormatContext* ifmt_ctx = NULL;
   AVFormatContext* ofmt_ctx = NULL;
   AVCodecContext* dec_ctx = NULL;
@@ -134,7 +104,7 @@ int main(int argc, char** argv)
 
         if (av_frame_make_writable(frame) < 0) goto cleanup;
         double current_time = frame_count * time_per_frame;
-        draw_moving_quad(frame, current_time);
+        draw_moving_ring(frame, current_time);
 
         frame->pts = frame_count; 
         if (mml_frame_write(enc_ctx, ofmt_ctx, out_stream, frame) < 0) goto cleanup;

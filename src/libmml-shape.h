@@ -67,6 +67,41 @@ mml_shape_quad(AVFrame* frame,
                uint8_t v_val,
                float alpha);
 
+/*!
+** @brief 绘制带光晕效果的椭圆环 (仿足球转播战术板效果)。
+**
+** @param frame      目标帧。
+** @param cx, cy     中心坐标 (球员脚下)。
+** @param rx, ry     X轴和Y轴半径。通常 ry = 0.3 * rx 以符合透视。
+** @param thickness  光晕宽度控制 (建议 0.1 - 0.3，值越大越粗/越虚)。
+** @param y, u, v    颜色。
+** @param max_alpha  最大不透明度 (0.0 - 1.0)。建议 0.8。
+*/
+void 
+mml_shape_ring(AVFrame* frame, 
+               int cx, int cy, 
+               int rx, int ry, 
+               float thickness, 
+               uint8_t col_y, uint8_t col_u, uint8_t col_v, 
+               float max_alpha);
+
+/*!
+** @brief Draws a thick line that supports transparency.
+** 
+** @param frame      Target frame.
+** @param x1,y1      Start point.
+** @param x2,y2      End point.
+** @param thickness  Line width in pixels.
+** @param y,u,v      Color.
+** @param alpha      Transparency (0.0 - 1.0).
+*/
+void 
+mml_shape_line(AVFrame* frame, 
+               int x1, int y1, int x2, int y2, 
+               int thickness, 
+               uint8_t y_val, uint8_t u_val, uint8_t v_val, 
+               float alpha);               
+
 #ifdef __cplusplus
 }
 #endif  
