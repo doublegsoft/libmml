@@ -37,6 +37,20 @@ mml_info_timebase(AVRational tb);
 float 
 mml_segment_dist(int px, int py, int x1, int y1, int x2, int y2);
 
+/*!
+** @brief Parses a time string "HH:MM:SS[.msec]" into total seconds.
+** 
+** Examples:
+** "00:01:30"     -> 90.0
+** "01:00:00.5"   -> 3600.5
+** "45"           -> 45.0 (Fallback)
+**
+** @param time_str String containing the time.
+** @return double  Total seconds, or -1.0 on failure.
+*/
+double 
+mml_time_parse(const char* time_str);
+
 #ifdef __cplusplus
 }
 #endif

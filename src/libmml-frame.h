@@ -18,6 +18,26 @@ extern "C"
 #include <libavformat/avformat.h>
 
 /*!
+** @brief Creates a "Deep Copy" of an AVFrame, converting it to YUV420P.
+**
+** Decoders typically reuse internal memory buffers. To store frames in a list 
+** (e.g., for reversing a video), we must allocate new memory and copy the pixel data.
+** This function also normalizes the pixel format to **AV_PIX_FMT_YUV420P** to 
+** ensure compatibility with the encoder later.
+**
+** @param src        [In] The source frame (usually from the decoder).
+** @param sws_cache  [In/Out] Double pointer to a SwsContext. 
+**                   - Used to cache the scaler context between calls to avoid 
+**                     re-initializing it for every frame (performance optimization).
+**                   - If *sws_cache is NULL, it is created.
+** @return AVFrame*  A newly allocated, independent frame containing the pixel data.
+**                   Returns NULL on allocation failure.
+*/
+AVFrame* 
+mml_frame_deep(AVFrame* src, 
+               struct SwsContext** sws_cache);
+
+/*!
 ** @brief Encodes a single AVFrame into a JPEG image and saves it to a file.
 **
 ** This function creates a temporary MJPEG encoder, pushes the raw frame into it,

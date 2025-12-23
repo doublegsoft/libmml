@@ -28,6 +28,7 @@ set(LIBMML_SRC
   "src/libmml-effect.c"
   "src/libmml-shape.c"
   "src/libmml-pixel.c"
+  "src/libmml-audio.c"
   "src/libmml-video.c"
 )
 
@@ -128,11 +129,27 @@ target_link_libraries(test_mml_video_cut PRIVATE
   mml
 )
 
+add_executable(test_mml_video_clip
+  "test/test_mml_video_clip.c"
+)
+
+target_link_libraries(test_mml_video_clip PRIVATE
+  mml
+)
+
 add_executable(test_mml_video_video
   "test/test_mml_video_video.c"
 )
 
 target_link_libraries(test_mml_video_video PRIVATE
+  mml
+)
+
+add_executable(test_mml_video_audio
+  "test/test_mml_video_audio.c"
+)
+
+target_link_libraries(test_mml_video_audio PRIVATE
   mml
 )
 

@@ -222,6 +222,7 @@ int main(int argc, char* argv[]) {
   AVStream* out_st = NULL;
 
   mml_video_load("../../data/V3.10.mp4", &in_fmt, &dec_ctx, &vid_idx, OUT_FILE, &out_fmt, &enc_ctx, &out_st);
+  avformat_write_header(out_fmt, NULL);
 
   // 3. Runtime
   AVPacket* pkt = av_packet_alloc();

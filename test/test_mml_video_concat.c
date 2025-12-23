@@ -27,91 +27,6 @@
 #define OUT_FPS  30
 
 // -----------------------------------------------------------------------------
-// Helper: Process a Single Input File (Decode -> Scale -> Encode)
-// -----------------------------------------------------------------------------
-int process_input_file(const char* filename, 
-                      AVFormatContext* out_fmt_ctx, 
-                      AVCodecContext* out_enc_ctx, 
-                      AVStream* out_stream, 
-                      int64_t* out_pts) 
-{
-  AVFormatContext* in_fmt_ctx = NULL;
-  AVCodecContext* dec_ctx = NULL;
-  const AVCodec* dec = NULL;
-  int vid_idx = -1;
-
-  mml_video_load(filename, &in_fmt_ctx, &dec_ctx, &vid_idx, NULL, NULL, NULL, NULL);
-
-  // 3. Allocate Resources
-  AVPacket* pkt = av_packet_alloc();
-  AVFrame* raw_frame = av_frame_alloc();
-  AVFrame* scaled_frame = av_frame_alloc();
-  struct SwsContext* sws_ctx = NULL;
-
-  // Configure Destination Frame
-  scaled_frame->format = AV_PIX_FMT_YUV420P;
-  scaled_frame->width  = OUT_W;
-  scaled_frame->height = OUT_H;
-  av_frame_get_buffer(scaled_frame, 32);
-
-  printf("Transcoding: %s\n", filename);
-
-  // 4. Decode Loop
-  while (av_read_frame(in_fmt_ctx, pkt) >= 0) {
-    if (pkt->stream_index == vid_idx) {
-      if (avcodec_send_packet(dec_ctx, pkt) == 0) {
-        while (avcodec_receive_frame(dec_ctx, raw_frame) == 0) {
-          
-          // Init Scaler (Lazy)
-          if (!sws_ctx) {
-            sws_ctx = sws_getContext(
-              raw_frame->width, raw_frame->height, raw_frame->format,
-              OUT_W, OUT_H, AV_PIX_FMT_YUV420P,
-              SWS_BICUBIC, NULL, NULL, NULL
-            );
-          }
-
-          // Scale
-          sws_scale(sws_ctx, 
-                    (const uint8_t* const*)raw_frame->data, raw_frame->linesize,
-                    0, raw_frame->height,
-                    scaled_frame->data, scaled_frame->linesize);
-
-          // Make writable
-          av_frame_make_writable(scaled_frame);
-
-          // Encode
-          scaled_frame->pts = (*out_pts)++;
-          mml_frame_write(out_enc_ctx, out_fmt_ctx, out_stream, scaled_frame);
-        }
-      }
-    }
-    av_packet_unref(pkt);
-  }
-
-  // 5. Flush Decoder
-  avcodec_send_packet(dec_ctx, NULL);
-  while (avcodec_receive_frame(dec_ctx, raw_frame) == 0) {
-    if (sws_ctx) {
-      sws_scale(sws_ctx, (const uint8_t* const*)raw_frame->data, raw_frame->linesize,
-                0, raw_frame->height, scaled_frame->data, scaled_frame->linesize);
-      scaled_frame->pts = (*out_pts)++;
-      mml_frame_write(out_enc_ctx, out_fmt_ctx, out_stream, scaled_frame);
-    }
-  }
-
-  // Cleanup Input Resources
-  sws_freeContext(sws_ctx);
-  av_frame_free(&raw_frame);
-  av_frame_free(&scaled_frame);
-  av_packet_free(&pkt);
-  avcodec_free_context(&dec_ctx);
-  avformat_close_input(&in_fmt_ctx);
-
-  return 0;
-}
-
-// -----------------------------------------------------------------------------
 // Main Application
 // -----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
@@ -163,7 +78,7 @@ int main(int argc, char* argv[]) {
   // --- 3. Loop Inputs ---
   for (int i = 1; i < argc; i++) {
     // Pass the individual pointers directly
-    process_input_file(argv[i], out_fmt_ctx, out_enc_ctx, out_stream, &global_pts);
+    mml_video_concat(argv[i], out_fmt_ctx, out_enc_ctx, out_stream, &global_pts);
   }
 
   // --- 4. Flush Encoder & Cleanup ---

@@ -104,7 +104,8 @@ int main(int argc, char** argv)
                           &ofmt_ctx,
                           &enc_ctx,
                           &out_stream);
-  fps = av_q2d(enc_ctx->framerate);                        
+  fps = av_q2d(enc_ctx->framerate);  
+  avformat_write_header(ofmt_ctx, NULL);                      
 
   // 4. Processing Loop
   frame = av_frame_alloc();

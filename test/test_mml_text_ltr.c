@@ -50,6 +50,7 @@ int main(int argc, char** argv)
                           &enc_ctx,
                           &out_stream);
   fps = av_q2d(enc_ctx->framerate); 
+  avformat_write_header(ofmt_ctx, NULL);
 
   if (fps < 1.0) fps = 25.0; 
   double time_per_frame = 1.0 / fps;

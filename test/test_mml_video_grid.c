@@ -114,6 +114,7 @@ int main(int argc, char* argv[]) {
   mml_video_load("../../data/V3.10.mp4", &in_fmts[1], &in_decs[1], &in_idxs[1], NULL, NULL, NULL, NULL);
   mml_video_load("../../data/V3.10.mp4", &in_fmts[2], &in_decs[2], &in_idxs[2], NULL, NULL, NULL, NULL);
   mml_video_load("../../data/V3.10.mp4", &in_fmts[3], &in_decs[3], &in_idxs[3], NULL, NULL, NULL, NULL);
+  avformat_write_header(out_fmt, NULL);
 
   printf("############# %lld\n", enc_ctx->width);
   // 3. Canvas Frame

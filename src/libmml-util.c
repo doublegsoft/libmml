@@ -77,3 +77,28 @@ mml_segment_dist(int px, int py, int x1, int y1, int x2, int y2)
   // 返回点 P 到该最近点的距离平方
   return ((px - proj_x) * (px - proj_x) + (py - proj_y) * (py - proj_y));
 }
+
+double 
+mml_time_parse(const char* time_str) 
+{
+  int h = 0, m = 0;
+  double s = 0.0;
+  
+  // Try parsing "HH:MM:SS" (or HH:MM:SS.ms)
+  // %d:%d:%lf reads Integer:Integer:Double
+  if (sscanf(time_str, "%d:%d:%lf", &h, &m, &s) == 3) {
+    return (h * 3600.0) + (m * 60.0) + s;
+  }
+  
+  // Try parsing "MM:SS"
+  if (sscanf(time_str, "%d:%lf", &m, &s) == 2) {
+    return (m * 60.0) + s;
+  }
+
+  // Try parsing raw seconds "SS"
+  if (sscanf(time_str, "%lf", &s) == 1) {
+    return s;
+  }
+
+  return -1.0; // Error
+}

@@ -121,6 +121,7 @@ int main(int argc, char* argv[]) {
 
   mml_video_load(main_video_path, &in1_fmt, &in1_dec, &in1_idx, OUT_FILE, &out_fmt, &out_enc, &out_stream);
   mml_video_load(pip_video_path, &in2_fmt, &in2_dec, &in2_idx, NULL, NULL, NULL, NULL);
+  avformat_write_header(out_fmt, NULL);
 
   // 6. Setup Scaler (PiP -> 320x240 YUV420P)
   sws_ctx = sws_getContext(

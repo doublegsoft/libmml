@@ -245,6 +245,34 @@ mml_plane_blur_circle(uint8_t* data, int linesize, /*int width, int height, */
   free(roi_blurred);
 }
  
+AVFrame* 
+mml_frame_deep(AVFrame* src, 
+               struct SwsContext** sws_cache) 
+{
+  AVFrame* dst = av_frame_alloc();
+  dst->format = AV_PIX_FMT_YUV420P;
+  dst->width = src->width;
+  dst->height = src->height;
+  
+  if (av_frame_get_buffer(dst, 32) < 0) {
+    av_frame_free(&dst);
+    return NULL;
+  }
+
+  // Initialize Scaler if needed
+  if (!*sws_cache) {
+    *sws_cache = sws_getContext(
+        src->width, src->height, src->format,
+        src->width, src->height, AV_PIX_FMT_YUV420P,
+        SWS_BILINEAR, NULL, NULL, NULL);
+  }
+
+  // Convert/Copy pixel data
+  sws_scale(*sws_cache, (const uint8_t* const*)src->data, src->linesize,
+            0, src->height, dst->data, dst->linesize);
+
+  return dst;
+}
 
 int 
 mml_frame_save(AVFrame* frame, const char* filename) 
@@ -363,38 +391,40 @@ cleanup:
 
 int 
 mml_frame_write(AVCodecContext* enc_ctx, 
-                AVFormatContext* ofmt_ctx,
-                AVStream* out_stream,
+                AVFormatContext* fmt_ctx,
+                AVStream* stream,
                 AVFrame* frame)
 {
-  int ret;
+  int ret = MML_SUCCESS;
 
   ret = avcodec_send_frame(enc_ctx, frame);
   if (ret < 0) return ret;
 
-  while (ret >= 0) 
-  {
-    AVPacket* pkt = av_packet_alloc();
+  // 2. Allocate packet once (Efficiency)
+  AVPacket* pkt = av_packet_alloc();
+  if (!pkt) return AVERROR(ENOMEM);
+
+  while (ret >= 0) {
     ret = avcodec_receive_packet(enc_ctx, pkt);
-    
+
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-      av_packet_free(&pkt);
+      ret = 0;
       break;
     } else if (ret < 0) {
-      av_packet_free(&pkt);
-      return ret;
+      break;
     }
 
-    // rescale timestamps for output (encoder time base -> stream time base)
-    av_packet_rescale_ts(pkt, enc_ctx->time_base, out_stream->time_base);
-    pkt->stream_index = out_stream->index;
+    av_packet_rescale_ts(pkt, enc_ctx->time_base, stream->time_base);
+    pkt->stream_index = stream->index;
 
-    ret = av_interleaved_write_frame(ofmt_ctx, pkt);
-    av_packet_free(&pkt);
-    
-    if (ret < 0) return ret;
+    ret = av_interleaved_write_frame(fmt_ctx, pkt);
+    av_packet_unref(pkt);
+
+    if (ret < 0) break; 
   }
-  return MML_SUCCESS;
+
+  av_packet_free(&pkt);
+  return ret;
 }
 
 int 

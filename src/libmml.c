@@ -1394,195 +1394,195 @@ RELEASE:
 **
 ********************************************************************************
 */
-int
-mml_video_concat(const char* original_path1, 
-                 const char* original_path2, 
-                 const char* output_path)
-{
-  AVFormatContext* 		input_fmt_ctx1 				= NULL;
-  AVFormatContext* 		input_fmt_ctx2 				= NULL;
-  AVFormatContext* 		output_fmt_ctx 				= NULL;
-  AVCodecContext* 		dec_ctx1 							= NULL;
-  AVCodecContext* 		dec_ctx2 							= NULL;
-  AVCodecContext* 		enc_ctx 							= NULL;
-  AVCodec*				 		enc			 							= NULL;
-  AVPacket* 					packet                 = NULL;
-  AVFrame* 						frame 								= NULL;
-  AVStream*						input_video_stream1		= NULL;
-  AVStream*						input_video_stream2		= NULL;
-  AVStream*						output_video_stream		= NULL;
-  int									input_video_index1;
-  int									input_video_index2;
-  int									got_frame = 0;
-  int ret;
+// int
+// mml_video_concat(const char* original_path1, 
+//                  const char* original_path2, 
+//                  const char* output_path)
+// {
+//   AVFormatContext* 		input_fmt_ctx1 				= NULL;
+//   AVFormatContext* 		input_fmt_ctx2 				= NULL;
+//   AVFormatContext* 		output_fmt_ctx 				= NULL;
+//   AVCodecContext* 		dec_ctx1 							= NULL;
+//   AVCodecContext* 		dec_ctx2 							= NULL;
+//   AVCodecContext* 		enc_ctx 							= NULL;
+//   AVCodec*				 		enc			 							= NULL;
+//   AVPacket* 					packet                 = NULL;
+//   AVFrame* 						frame 								= NULL;
+//   AVStream*						input_video_stream1		= NULL;
+//   AVStream*						input_video_stream2		= NULL;
+//   AVStream*						output_video_stream		= NULL;
+//   int									input_video_index1;
+//   int									input_video_index2;
+//   int									got_frame = 0;
+//   int ret;
   
-  ret = mml_format_open(original_path1, 
-                        &input_fmt_ctx1);
-  if (ret != MML_SUCCESS)
-    goto RELEASE;
+//   ret = mml_format_open(original_path1, 
+//                         &input_fmt_ctx1);
+//   if (ret != MML_SUCCESS)
+//     goto RELEASE;
  
-  ret = mml_format_open(original_path2, 
-                        &input_fmt_ctx2);
+//   ret = mml_format_open(original_path2, 
+//                         &input_fmt_ctx2);
   
-  if (ret != MML_SUCCESS)
-    goto RELEASE;
+//   if (ret != MML_SUCCESS)
+//     goto RELEASE;
 	
-  /*
-  ret = mml_enc_init(output_path, 
-                     AV_CODEC_ID_H264, 
-                     &output_fmt_ctx, 
-                     &enc_ctx, 
-                     &enc);
-                     */
-  ret = avformat_alloc_output_context2(&output_fmt_ctx, NULL, "mp4", output_path);
+//   /*
+//   ret = mml_enc_init(output_path, 
+//                      AV_CODEC_ID_H264, 
+//                      &output_fmt_ctx, 
+//                      &enc_ctx, 
+//                      &enc);
+//                      */
+//   ret = avformat_alloc_output_context2(&output_fmt_ctx, NULL, "mp4", output_path);
   
-  if (ret != MML_SUCCESS)
-    goto RELEASE;
+//   if (ret != MML_SUCCESS)
+//     goto RELEASE;
   
-  for (int i = 0; i < 2; i++)
-  {
-    AVFormatContext* input_fmt_ctx = (i == 0) ? input_fmt_ctx1 : input_fmt_ctx2;
-		for (int j = 0; j < input_fmt_ctx->nb_streams; j++)
-    {
-			AVStream* out_stream;
-      AVStream* in_stream = input_fmt_ctx->streams[j];
-      AVCodecParameters *in_codecpar = in_stream->codecpar;
+//   for (int i = 0; i < 2; i++)
+//   {
+//     AVFormatContext* input_fmt_ctx = (i == 0) ? input_fmt_ctx1 : input_fmt_ctx2;
+// 		for (int j = 0; j < input_fmt_ctx->nb_streams; j++)
+//     {
+// 			AVStream* out_stream;
+//       AVStream* in_stream = input_fmt_ctx->streams[j];
+//       AVCodecParameters *in_codecpar = in_stream->codecpar;
 
-      out_stream = avformat_new_stream(output_fmt_ctx, NULL);
-      if (!out_stream) 
-      {
-        ret = MML_ERROR_STREAM_NOT_CREATED;
-        sprintf(err_msg, "failed to create stream");
-        goto RELEASE;
-      }
+//       out_stream = avformat_new_stream(output_fmt_ctx, NULL);
+//       if (!out_stream) 
+//       {
+//         ret = MML_ERROR_STREAM_NOT_CREATED;
+//         sprintf(err_msg, "failed to create stream");
+//         goto RELEASE;
+//       }
 
-    	ret = avcodec_parameters_copy(out_stream->codecpar, in_codecpar);
-      out_stream->codecpar->frame_size = 5;
-      if (ret < 0) 
-      {
-        ret = MML_ERROR_CODEC_NOT_COPIED;
-        sprintf(err_msg, "failed to copy codec parameters");
-        goto RELEASE;
-      }
-      out_stream->codecpar->codec_tag = 0;
-      /*!
-      ** time base change is working.
-      **
-      ** sample:
-      **		ffprobe -v error -show_entries stream=index,codec_type,time_base ../../data/V1V2.mp4
-      */
-      /*
-      if (out_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
-      {
-      	out_stream->time_base = (AVRational){1, 44100};
-      }
-      */
-    } // input_fmt_ctx->nb_streams
-  }
+//     	ret = avcodec_parameters_copy(out_stream->codecpar, in_codecpar);
+//       out_stream->codecpar->frame_size = 5;
+//       if (ret < 0) 
+//       {
+//         ret = MML_ERROR_CODEC_NOT_COPIED;
+//         sprintf(err_msg, "failed to copy codec parameters");
+//         goto RELEASE;
+//       }
+//       out_stream->codecpar->codec_tag = 0;
+//       /*!
+//       ** time base change is working.
+//       **
+//       ** sample:
+//       **		ffprobe -v error -show_entries stream=index,codec_type,time_base ../../data/V1V2.mp4
+//       */
+//       /*
+//       if (out_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
+//       {
+//       	out_stream->time_base = (AVRational){1, 44100};
+//       }
+//       */
+//     } // input_fmt_ctx->nb_streams
+//   }
   
-  if (!(output_fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
-    if (avio_open(&output_fmt_ctx->pb, output_path, AVIO_FLAG_WRITE) < 0) 
-    {
-      ret = MML_ERROR_FILE_OPEN_FAILED;
-      sprintf(err_msg, "failed to open file '%s'", output_path);
-      goto RELEASE;
-    }
-  }
+//   if (!(output_fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
+//     if (avio_open(&output_fmt_ctx->pb, output_path, AVIO_FLAG_WRITE) < 0) 
+//     {
+//       ret = MML_ERROR_FILE_OPEN_FAILED;
+//       sprintf(err_msg, "failed to open file '%s'", output_path);
+//       goto RELEASE;
+//     }
+//   }
   
-  ret = avformat_write_header(output_fmt_ctx, NULL);
-  if (ret < 0) 
-  {
-    ret = MML_ERROR_STREAM_WRITE_FAILED;
-    sprintf(err_msg, "failed to write header to '%s'", output_path);
-    goto RELEASE;
-  }
+//   ret = avformat_write_header(output_fmt_ctx, NULL);
+//   if (ret < 0) 
+//   {
+//     ret = MML_ERROR_STREAM_WRITE_FAILED;
+//     sprintf(err_msg, "failed to write header to '%s'", output_path);
+//     goto RELEASE;
+//   }
   
-  int64_t prev_audio_pts = 0;
-  int64_t prev_audio_dts = 0;
-  int64_t prev_audio_dur = 0;
+//   int64_t prev_audio_pts = 0;
+//   int64_t prev_audio_dts = 0;
+//   int64_t prev_audio_dur = 0;
   
-  int64_t offset_audio_pts = 0;
-  int64_t offset_audio_dts = 0;
+//   int64_t offset_audio_pts = 0;
+//   int64_t offset_audio_dts = 0;
   
-  int64_t prev_video_pts = 0;
-  int64_t prev_video_dts = 0;
-  int64_t prev_video_dur = 0;
+//   int64_t prev_video_pts = 0;
+//   int64_t prev_video_dts = 0;
+//   int64_t prev_video_dur = 0;
   
-  int64_t offset_video_pts = 0;
-  int64_t offset_video_dts = 0;
+//   int64_t offset_video_pts = 0;
+//   int64_t offset_video_dts = 0;
   
-  packet = av_packet_alloc();
-  if (!packet) 
-  {
-    ret = MML_ERROR_FRAME_NOT_CREATED;
-    sprintf(err_msg, "failed to allocate input packet");
-    goto RELEASE;
-  }
+//   packet = av_packet_alloc();
+//   if (!packet) 
+//   {
+//     ret = MML_ERROR_FRAME_NOT_CREATED;
+//     sprintf(err_msg, "failed to allocate input packet");
+//     goto RELEASE;
+//   }
   
-  for (int i = 0; i < 2; i++) 
-  {
-    AVFormatContext* input_fmt_ctx = (i == 0) ? input_fmt_ctx1 : input_fmt_ctx2;
-    while (av_read_frame(input_fmt_ctx, packet) >= 0) 
-    {
-      AVStream* in_stream = input_fmt_ctx->streams[packet->stream_index];
-      AVStream* out_stream = output_fmt_ctx->streams[packet->stream_index];
-      if (in_stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) 
-      {
-        mml_stream_remux(packet, 
-                         in_stream->time_base, 
-                         out_stream->time_base,
-                         output_fmt_ctx,
-                         &prev_audio_dts, 
-                         &prev_audio_pts, 
-                         &prev_audio_dur, 
-                         &offset_audio_dts, 
-                         &offset_audio_pts);
-      }
-      else if (in_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
-      {
-        if (packet->pts > packet->dts)
-        {
-          packet->pts = packet->dts;
-        }
-        mml_stream_remux(packet, 
-                         in_stream->time_base, 
-                         out_stream->time_base,
-                         output_fmt_ctx,
-                         &prev_video_dts, 
-                         &prev_video_pts, 
-                         &prev_video_dur, 
-                         &offset_video_dts, 
-                         &offset_video_pts);
-      }
-      av_packet_unref(packet);
-    }
-  }
-  av_write_trailer(output_fmt_ctx);
+//   for (int i = 0; i < 2; i++) 
+//   {
+//     AVFormatContext* input_fmt_ctx = (i == 0) ? input_fmt_ctx1 : input_fmt_ctx2;
+//     while (av_read_frame(input_fmt_ctx, packet) >= 0) 
+//     {
+//       AVStream* in_stream = input_fmt_ctx->streams[packet->stream_index];
+//       AVStream* out_stream = output_fmt_ctx->streams[packet->stream_index];
+//       if (in_stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) 
+//       {
+//         mml_stream_remux(packet, 
+//                          in_stream->time_base, 
+//                          out_stream->time_base,
+//                          output_fmt_ctx,
+//                          &prev_audio_dts, 
+//                          &prev_audio_pts, 
+//                          &prev_audio_dur, 
+//                          &offset_audio_dts, 
+//                          &offset_audio_pts);
+//       }
+//       else if (in_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
+//       {
+//         if (packet->pts > packet->dts)
+//         {
+//           packet->pts = packet->dts;
+//         }
+//         mml_stream_remux(packet, 
+//                          in_stream->time_base, 
+//                          out_stream->time_base,
+//                          output_fmt_ctx,
+//                          &prev_video_dts, 
+//                          &prev_video_pts, 
+//                          &prev_video_dur, 
+//                          &offset_video_dts, 
+//                          &offset_video_pts);
+//       }
+//       av_packet_unref(packet);
+//     }
+//   }
+//   av_write_trailer(output_fmt_ctx);
   
-  if (!(output_fmt_ctx->oformat->flags & AVFMT_NOFILE)) 
-    avio_closep(&output_fmt_ctx->pb);
+//   if (!(output_fmt_ctx->oformat->flags & AVFMT_NOFILE)) 
+//     avio_closep(&output_fmt_ctx->pb);
   
-RELEASE:
+// RELEASE:
   
-  if (dec_ctx1 != NULL)
-  	avcodec_free_context(&dec_ctx1);
-  if (dec_ctx2 != NULL)
-  	avcodec_free_context(&dec_ctx2);
-  if (enc_ctx != NULL)
-  	avcodec_free_context(&enc_ctx);
-  if (input_fmt_ctx1 != NULL)
-  	avformat_close_input(&input_fmt_ctx1);
-  if (input_fmt_ctx2 != NULL)
-  	avformat_close_input(&input_fmt_ctx2);
-  if (output_fmt_ctx != NULL)
-  	avformat_free_context(output_fmt_ctx);
-  if (frame != NULL)
-  	av_frame_free(&frame);
-  if (packet != NULL)
-  	av_packet_free(&packet);
+//   if (dec_ctx1 != NULL)
+//   	avcodec_free_context(&dec_ctx1);
+//   if (dec_ctx2 != NULL)
+//   	avcodec_free_context(&dec_ctx2);
+//   if (enc_ctx != NULL)
+//   	avcodec_free_context(&enc_ctx);
+//   if (input_fmt_ctx1 != NULL)
+//   	avformat_close_input(&input_fmt_ctx1);
+//   if (input_fmt_ctx2 != NULL)
+//   	avformat_close_input(&input_fmt_ctx2);
+//   if (output_fmt_ctx != NULL)
+//   	avformat_free_context(output_fmt_ctx);
+//   if (frame != NULL)
+//   	av_frame_free(&frame);
+//   if (packet != NULL)
+//   	av_packet_free(&packet);
   
-	return ret;
-}
+// 	return ret;
+// }
 
 /*
 ********************************************************************************
