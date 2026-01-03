@@ -81,6 +81,14 @@ target_link_libraries(test_mml_audio_remove PRIVATE
   mml
 )
 
+add_executable(test_mml_video_analysis
+  "test/test_mml_video_analysis.c"
+)
+
+target_link_libraries(test_mml_video_analysis PRIVATE
+  mml
+)
+
 add_executable(test_mml_video_info
   "test/test_mml_video_info.c"
 )
@@ -269,6 +277,7 @@ add_executable(test_mml_image_frame
   "test/test_mml_image_frame.c"
 )
 
+
 target_link_libraries(test_mml_image_frame PRIVATE
   mml
 )
@@ -302,6 +311,14 @@ add_executable(test_mml_frame_flash
 )
 
 target_link_libraries(test_mml_frame_flash PRIVATE
+  mml
+)
+
+add_executable(test_mml_frame_smoke
+  "test/test_mml_frame_smoke.c"
+)
+
+target_link_libraries(test_mml_frame_smoke PRIVATE
   mml
 )
 
@@ -358,5 +375,13 @@ add_executable(alpha
 )
 
 target_link_libraries(alpha PRIVATE
+  mml
+)
+
+add_executable(ellipse
+  "test/ellipse.c"
+)
+
+target_link_libraries(ellipse PRIVATE
   mml
 )

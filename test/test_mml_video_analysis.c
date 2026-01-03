@@ -10,8 +10,16 @@
 #include "libmml-video.h"
 
 // --- Configuration ---
-#define INPUT_FILENAME "../../data/V3.mp4"
-#define OUTPUT_FILENAME "output_ellipse.mp4"
+#define INPUT_FILENAME "../../data/G2.mp4"
+#define COORDS_FILENAME "../../data/coords.txt"
+#define OUTPUT_FILENAME "output_analysis.mp4"
+
+typedef struct {
+  double x1;
+  double y1;
+  double x2;
+  double y2;
+} Rect;
 
 // Logic: Calculate ellipse position based on TIME (seconds), not raw PTS
 static void 
@@ -48,7 +56,8 @@ draw_moving_ellipse(AVFrame* frame, double time_sec) {
 
 // --- Main Program ---
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) 
+{
   AVFormatContext* ifmt_ctx = NULL;
   AVFormatContext* ofmt_ctx = NULL;
   AVCodecContext* dec_ctx = NULL;
@@ -64,6 +73,44 @@ int main(int argc, char** argv) {
   AVFrame* frame = NULL;
   AVPacket* pkt = NULL;
 
+  FILE* f_read = fopen(COORDS_FILENAME, "r");
+  if (!f_read) {
+    perror("Error opening file");
+    return 1;
+  }
+  int capacity = 10;
+  int count = 0;
+  Rect* data_array = (Rect*)malloc(capacity * sizeof(Rect));
+  if (!data_array) {
+    perror("Initial allocation failed");
+    fclose(f_read);
+    return 1;
+  }
+  double t1, t2, t3, t4;
+
+  while (fscanf(f_read, "%lf,%lf,%lf,%lf", &t1, &t2, &t3, &t4) == 4) {
+    if (count >= capacity) {
+      capacity *= 2;
+      printf("  [Debug] Resizing array capacity to %d\n", capacity);
+      
+      Rect* temp = (Rect*)realloc(data_array, capacity * sizeof(Rect));
+      if (!temp) {
+        perror("Realloc failed");
+        free(data_array);
+        fclose(f_read);
+        return 1;
+      }
+      data_array = temp;
+    }
+
+    data_array[count].x1 = t1;
+    data_array[count].y1 = t2;
+    data_array[count].x2 = t3;
+    data_array[count].y2 = t4; 
+    count++;
+  }
+  fclose(f_read);
+
   int rc = mml_video_load(INPUT_FILENAME, 
                           &ifmt_ctx,
                           &dec_ctx,
@@ -72,8 +119,8 @@ int main(int argc, char** argv) {
                           &ofmt_ctx,
                           &enc_ctx,
                           &out_stream);
-  fps = av_q2d(enc_ctx->framerate);       
-  avformat_write_header(ofmt_ctx, NULL);                         
+  fps = av_q2d(enc_ctx->framerate);   
+  avformat_write_header(ofmt_ctx, NULL);                             
 
   // 4. Processing Loop
   frame = av_frame_alloc();
@@ -85,12 +132,16 @@ int main(int argc, char** argv) {
   long long frame_count = 0; // Monotonic counter for smooth animation
 
   printf("processing: %dx%d @ %.2f fps\n", dec_ctx->width, dec_ctx->height, fps);
-
+  
+  // for (int i = 0; i < count; i++) {
+  //   Rect rect = data_array[i];
+  //   printf("rect %d: %lf, %lf, %lf, %lf\n", i, rect.x1, rect.y1, rect.x2, rect.y2);
+  // }
+  // if (1) return 0;
   while (av_read_frame(ifmt_ctx, pkt) >= 0) 
   {
     if (pkt->stream_index == video_idx) 
     {
-      
       ret = avcodec_send_packet(dec_ctx, pkt);
       if (ret < 0) break;
 
@@ -103,7 +154,17 @@ int main(int argc, char** argv) {
 
         if (av_frame_make_writable(frame) < 0) goto cleanup;
         double current_time = frame_count * time_per_frame;
-        draw_moving_ellipse(frame, current_time);
+        
+        if (frame_count < count) 
+        {
+          Rect rect = data_array[frame_count];
+          int cx = (int)(rect.x1 + rect.x2) / 2;
+          int cy = (int)(rect.y2 - 3);
+          mml_shape_ring(frame, cx, cy, 30, 10, 0.5f, 81, 94, 240, 0.8);
+          char fn[1024];
+          sprintf(fn, "/Users/christian/Downloads/abc/crop_%03lld.jpg", frame_count);
+          mml_frame_image(frame, fn, rect.x1, rect.y1, rect.x2 - rect.x1, rect.y2 - rect.y1);
+        }
 
         frame->pts = frame_count; 
         if (mml_frame_write(enc_ctx, ofmt_ctx, out_stream, frame) < 0) goto cleanup;

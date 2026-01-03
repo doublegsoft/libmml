@@ -158,6 +158,42 @@ mml_video_clip(AVFormatContext* ifmt_ctx,
                const char* end_time,
                int64_t* next_pts);
 
+
+/*!
+** @brief Transcodes and merges a video stream with an audio stream.
+**
+** This function implements a specific logic for content creation:
+** 1. **Video Dominant**: The output duration is determined strictly by the video length.
+** 2. **Audio Looping**: If the audio is shorter than the video, it loops automatically.
+** 3. **Audio Cutting**: If the audio is longer than the video, it cuts off when video ends.
+** 4. **PTS Reset**: Both streams get new, synthetic timestamps starting from 0.
+**
+** @param in_v_fmt     Input Video Format Context.
+** @param v_dec_ctx    Input Video Decoder Context.
+** @param in_v_idx     Input Video Stream Index.
+** @param in_a_fmt     Input Audio Format Context.
+** @param a_dec_ctx    Input Audio Decoder Context.
+** @param in_a_idx     Input Audio Stream Index.
+** @param out_fmt      Output Format Context (Muxer).
+** @param v_enc_ctx    Output Video Encoder (defines output resolution/fps).
+** @param out_v_stream Output Video Stream.
+** @param a_enc_ctx    Output Audio Encoder (defines sample rate/format).
+** @param out_a_stream Output Audio Stream.
+** @return int         MML_SUCCESS (0) on success.
+*/
+int 
+mml_video_audio(AVFormatContext* in_v_fmt, 
+                AVCodecContext* v_dec_ctx, 
+                int in_v_idx,
+                AVFormatContext* in_a_fmt, 
+                AVCodecContext* a_dec_ctx,
+                int in_a_idx,
+                AVFormatContext* out_fmt, 
+                AVCodecContext* v_enc_ctx,
+                AVStream* out_v_stream,
+                AVCodecContext* a_enc_ctx,
+                AVStream* out_a_stream);              
+
 #ifdef __cplusplus
 }
 #endif

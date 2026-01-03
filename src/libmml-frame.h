@@ -317,6 +317,25 @@ mml_frame_flash(AVFrame* src,
 void 
 mml_frame_pixelate(AVFrame* src, AVFrame** work, int block_size);
 
+/*!
+** @brief Saves a specific rectangular area of a frame as a JPEG image.
+**
+** This function performs a Crop -> Convert -> Encode pipeline.
+**
+** @note Input frame MUST be **AV_PIX_FMT_YUV420P**.
+**       Coordinates (x, y, w, h) must be even numbers for chroma alignment.
+**
+** @param src       Source frame (Full video frame).
+** @param filename  Output path (e.g. "crop.jpg").
+** @param x         Top-left X coordinate of crop.
+** @param y         Top-left Y coordinate of crop.
+** @param w         Width of crop.
+** @param h         Height of crop.
+** @return int      0 on success, -1 on failure.
+*/
+int 
+mml_frame_image(AVFrame* src, const char* filename, int x, int y, int w, int h);
+
 #ifdef __cplusplus
 }
 #endif                 

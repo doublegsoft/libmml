@@ -1055,3 +1055,120 @@ mml_frame_pixelate(AVFrame* src, AVFrame** work, int block_size)
   mml_plane_pixelate((*work)->data[1], (*work)->linesize[1], uv_w, uv_h, uv_block);
   mml_plane_pixelate((*work)->data[2], (*work)->linesize[2], uv_w, uv_h, uv_block);
 }
+
+int 
+mml_frame_image(AVFrame* src, const char* filename, int x, int y, int w, int h) 
+{
+  int ret = 0;
+  const AVCodec* codec = NULL;
+  AVCodecContext* ctx = NULL;
+  AVFrame* crop_frame = NULL;
+  AVPacket* pkt = NULL;
+  struct SwsContext* sws = NULL;
+  FILE* file = NULL;
+
+  // --------------------------------------------------------------------------
+  // 1. Validation & Alignment
+  // --------------------------------------------------------------------------
+  if (!src || src->format != AV_PIX_FMT_YUV420P) {
+    fprintf(stderr, "Error: Input must be YUV420P.\n");
+    return -1;
+  }
+
+  // Clamp bounds
+  if (x < 0) x = 0;
+  if (y < 0) y = 0;
+  if (x + w > src->width) w = src->width - x;
+  if (y + h > src->height) h = src->height - y;
+
+  // Align to even numbers (Crucial for YUV420P)
+  x &= ~1; y &= ~1; w &= ~1; h &= ~1;
+
+  if (w <= 0 || h <= 0) return -1;
+
+  codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
+  if (!codec) return -1;
+
+  ctx = avcodec_alloc_context3(codec);
+  
+  // Encoder uses the CROP dimensions
+  ctx->width = w;
+  ctx->height = h;
+  ctx->time_base = (AVRational){1, 25};
+  ctx->pix_fmt = AV_PIX_FMT_YUVJ420P; // JPEG Full Range
+
+  if (avcodec_open2(ctx, codec, NULL) < 0) {
+    ret = -1;
+    goto cleanup;
+  }
+
+  // --------------------------------------------------------------------------
+  // 3. Prepare Crop Buffer
+  // --------------------------------------------------------------------------
+  crop_frame = av_frame_alloc();
+  crop_frame->format = ctx->pix_fmt;
+  crop_frame->width  = w;
+  crop_frame->height = h;
+  
+  if (av_frame_get_buffer(crop_frame, 32) < 0) {
+    ret = -1;
+    goto cleanup;
+  }
+
+  // --------------------------------------------------------------------------
+  // 4. Crop & Convert (The Pointer Trick)
+  // --------------------------------------------------------------------------
+  sws = sws_getContext(
+    w, h, src->format,                // Input: Treat input as if it is size WxH
+    w, h, ctx->pix_fmt,               // Output: Size WxH
+    SWS_BILINEAR, NULL, NULL, NULL
+  );
+  
+  // Calculate Pointers to the start of the ROI (Region of Interest)
+  const uint8_t* src_ptrs[4];
+  int src_lines[4];
+
+  // Copy standard strides (We need the FULL stride so sws skips the right data)
+  src_lines[0] = src->linesize[0];
+  src_lines[1] = src->linesize[1];
+  src_lines[2] = src->linesize[2];
+  src_lines[3] = 0;
+
+  // Y Offset
+  src_ptrs[0] = src->data[0] + (y * src->linesize[0]) + x;
+  
+  // U/V Offsets (Div 2 for YUV420P)
+  int uv_off = (y / 2) * src->linesize[1] + (x / 2);
+  src_ptrs[1] = src->data[1] + uv_off;
+  src_ptrs[2] = src->data[2] + uv_off;
+  src_ptrs[3] = NULL;
+
+  // Perform transfer
+  sws_scale(sws, src_ptrs, src_lines, 0, h, crop_frame->data, crop_frame->linesize);
+
+  // --------------------------------------------------------------------------
+  // 5. Encode & Save
+  // --------------------------------------------------------------------------
+  pkt = av_packet_alloc();
+  ret = avcodec_send_frame(ctx, crop_frame);
+  if (ret < 0) goto cleanup;
+
+  ret = avcodec_receive_packet(ctx, pkt);
+  if (ret == 0) {
+    file = fopen(filename, "wb");
+    if (file) {
+      fwrite(pkt->data, 1, pkt->size, file);
+      fclose(file);
+      printf("Saved crop %dx%d to %s\n", w, h, filename);
+    }
+    av_packet_unref(pkt);
+  }
+
+cleanup:
+  if (sws) sws_freeContext(sws);
+  if (ctx) avcodec_free_context(&ctx);
+  if (crop_frame) av_frame_free(&crop_frame);
+  if (pkt) av_packet_free(&pkt);
+
+  return ret;
+}
