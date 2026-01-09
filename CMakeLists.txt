@@ -16,12 +16,37 @@ add_subdirectory("${GFC_DIR}")
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(BUILD                    "build/darwin")
-endif()    
+endif()   
 
+################################################################################
+##                                                                            ##
+##                                  ffmpeg                                    ##
+##                                                                            ##
+################################################################################
+set(FFMPEG_DIR                         "/opt/homebrew/Cellar/ffmpeg/8.0.1")
+set(FFMPEG_INCLUDE_DIR                 "${FFMPEG_DIR}/include")
+set(FFMPEG_LIBRARY_DIR                 "${FFMPEG_DIR}/lib")
+set(FFMPEG_LIBRARIES                   avcodec avformat avutil swresample swscale)
+
+################################################################################
+##                                                                            ##
+##                                   lua                                      ##
+##                                                                            ##
+################################################################################
+set(LUA_DIR                           "3rd/lua-5.5.0")
+set(LUA_INCLUDE_DIR                   "${LUA_DIR}")
+set(LUA_LIBRARY_DIR                   "${LUA_DIR}")
+set(LUA_LIBRARIES                     lua) 
+
+################################################################################
+##                                                                            ##
+##                                  libmml                                    ##
+##                                                                            ##
+################################################################################
 set(LIBMML_SRC
   "src/libmml.c" 
   "src/libmml-error.c"
-   "src/libmml-util.c"
+  "src/libmml-util.c"
   "src/libmml-frame.c"
   "src/libmml-image.c"
   "src/libmml-text.c"
@@ -34,31 +59,21 @@ set(LIBMML_SRC
 
 set(LIBMML_LIB
   gfc
-  avcodec
-  avfilter
-  avformat
-  avutil
-  swresample
-  swscale
+  ${FFMPEG_LIBRARIES}
+  ${LUA_LIBRARIES}
 )
 
 include_directories(
   "src"
   "${GFC_DIR}/include"
-  "${FFMPEG_DIR}"
-  "${FFMPEG_DIR}/${BUILD}"
   "${STB_DIR}"
+  "${FFMPEG_INCLUDE_DIR}"
+  "${LUA_INCLUDE_DIR}"
 )
 
 link_directories(
-  "/opt/homebrew/Cellar/ffmpeg/8.0.1/lib"
-  # "${FFMPEG_DIR}/${BUILD}/libavcodec"
-  # "${FFMPEG_DIR}/${BUILD}/libavdevice"
-  # "${FFMPEG_DIR}/${BUILD}/libavfilter"
-  # "${FFMPEG_DIR}/${BUILD}/libavformat"
-  # "${FFMPEG_DIR}/${BUILD}/libavutil"
-  # "${FFMPEG_DIR}/${BUILD}/libswresample"
-  # "${FFMPEG_DIR}/${BUILD}/libswscale"
+  "${FFMPEG_LIBRARY_DIR}"
+  "${LUA_LIBRARY_DIR}"
 )
 
 add_library(mml STATIC ${LIBMML_SRC})
@@ -343,6 +358,14 @@ add_executable(test_mml_frame_blur
 )
 
 target_link_libraries(test_mml_frame_blur PRIVATE
+  mml
+)
+
+add_executable(test_mml_frame_lua
+  "test/test_mml_frame_lua.c"
+)
+
+target_link_libraries(test_mml_frame_lua PRIVATE
   mml
 )
 

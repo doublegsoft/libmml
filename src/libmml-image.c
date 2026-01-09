@@ -168,7 +168,6 @@ mml_image_load(const char*          filename,
   avcodec_parameters_from_context((*out_stream)->codecpar, *enc_ctx);
   (*out_stream)->time_base = (*enc_ctx)->time_base;
   avio_open(&(*ofmt_ctx)->pb, out_path, AVIO_FLAG_WRITE);
-  avformat_write_header(*ofmt_ctx, NULL);
-
+  // avformat_write_header(*ofmt_ctx, NULL);
   return ret;
 }

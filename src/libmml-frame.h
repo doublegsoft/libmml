@@ -336,6 +336,25 @@ mml_frame_pixelate(AVFrame* src, AVFrame** work, int block_size);
 int 
 mml_frame_image(AVFrame* src, const char* filename, int x, int y, int w, int h);
 
+/*!
+** @brief Executes a Lua script function to process a specific video frame.
+**
+** This function initializes a Lua environment, loads the script, and calls
+** the global Lua function 'process_frame(frame_ptr, width, height, index)'.
+**
+** @note **Performance Warning**: This function initializes a new Lua state 
+**       every call. For video processing, the Lua state should ideally be 
+**       created once during initialization and reused here.
+**
+** @param frame    [In/Out] The AVFrame to be processed.
+** @param index    The current frame index (e.g., 0, 1, 2...).
+** @param lua_file Path to the .lua script file.
+** @param error    [Out] Pointer to a string to return error messages (optional).
+** @return int     MML_SUCCESS (0) on success, non-zero on failure.
+*/
+int 
+mml_frame_lua(AVFrame* base, AVFrame* work, int start_pts, int present_pts, const char* lua_file, char** error);
+
 #ifdef __cplusplus
 }
 #endif                 

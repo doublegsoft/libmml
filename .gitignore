@@ -1,3 +1,15 @@
 .DS_Store
 build
 *.MOV
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+*.exp
+*.def
+*.manifest
+*.rc
+*.res
+*.obj

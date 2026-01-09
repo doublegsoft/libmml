@@ -18,6 +18,8 @@
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 
+#include "libmml-video.h"
+
 #define OUT_FILE "pixelate_area.mp4"
 #define BOX_W 300
 #define BOX_H 200
@@ -132,36 +134,16 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // 1. Setup Input
   AVFormatContext* in_fmt = NULL;
-  avformat_open_input(&in_fmt, argv[1], NULL, NULL);
-  avformat_find_stream_info(in_fmt, NULL);
-  int vid_idx = av_find_best_stream(in_fmt, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
-  AVCodecContext* dec_ctx = avcodec_alloc_context3(NULL);
-  avcodec_parameters_to_context(dec_ctx, in_fmt->streams[vid_idx]->codecpar);
-  const AVCodec* dec = avcodec_find_decoder(dec_ctx->codec_id);
-  avcodec_open2(dec_ctx, dec, NULL);
-
-  // 2. Setup Output
+  AVCodecContext* dec_ctx = NULL;
+  int vid_idx = 0;
   AVFormatContext* out_fmt = NULL;
-  avformat_alloc_output_context2(&out_fmt, NULL, NULL, OUT_FILE);
-  const AVCodec* enc = avcodec_find_encoder(AV_CODEC_ID_H264);
-  AVCodecContext* enc_ctx = avcodec_alloc_context3(enc);
-  enc_ctx->width = dec_ctx->width;
-  enc_ctx->height = dec_ctx->height;
-  enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
-  enc_ctx->time_base = (AVRational){1, 30};
-  enc_ctx->framerate = (AVRational){30, 1};
-  if (out_fmt->oformat->flags & AVFMT_GLOBALHEADER) 
-    enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-  avcodec_open2(enc_ctx, enc, NULL);
-  AVStream* out_st = avformat_new_stream(out_fmt, NULL);
-  avcodec_parameters_from_context(out_st->codecpar, enc_ctx);
-  out_st->time_base = enc_ctx->time_base;
-  avio_open(&out_fmt->pb, OUT_FILE, AVIO_FLAG_WRITE);
+  AVCodecContext* enc_ctx = NULL;
+  AVStream* out_st = NULL;
+   
+  mml_video_load(argv[1], &in_fmt, &dec_ctx, &vid_idx, OUT_FILE, &out_fmt, &enc_ctx, &out_st);
   avformat_write_header(out_fmt, NULL);
 
-  // 3. Loop
   AVPacket* pkt = av_packet_alloc();
   AVFrame* src_frame = av_frame_alloc();
   // Safe work frame (YUV420P)

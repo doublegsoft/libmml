@@ -14,6 +14,10 @@
 #include <libavutil/avutil.h>
 #include <libavutil/opt.h>
 
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
+
 #include "libmml-internal.h"
 #include "libmml-error.h"
 #include "libmml-frame.h"
@@ -1171,4 +1175,117 @@ cleanup:
   if (pkt) av_packet_free(&pkt);
 
   return ret;
+}
+
+// -----------------------------------------------------------------------------
+// Helper: Convert C Array -> Lua Table
+// -----------------------------------------------------------------------------
+static void 
+c_array_to_lua_table(lua_State* L, uint8_t* data, int size) 
+{
+  // Create new table with pre-allocated size for performance
+  lua_createtable(L, size, 0); 
+
+  for (int i = 0; i < size; i++) {
+    lua_pushinteger(L, data[i]);
+    // Lua table[i+1] = data[i]
+    lua_rawseti(L, -2, i + 1); 
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Helper: Convert Lua Table -> C Array
+// -----------------------------------------------------------------------------
+void 
+lua_table_to_c_array(lua_State* L, int stack_index, uint8_t* data, int size) 
+{
+  for (int i = 0; i < size; i++) {
+    // Push index (i+1) onto stack
+    lua_pushinteger(L, i + 1);
+    // Get table[index] (pops index, pushes result)
+    lua_gettable(L, stack_index);
+    
+    int val = (int)lua_tointeger(L, -1);
+    data[i] = (uint8_t)val;
+    
+    // Pop value
+    lua_pop(L, 1);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Lua Helper: Read a byte from memory
+// Usage: val = mem_read(ptr, offset)
+// -----------------------------------------------------------------------------
+static int l_mem_read(lua_State* L) {
+  // 1. Get Pointer
+  if (!lua_islightuserdata(L, 1)) return 0;
+  uint8_t* ptr = (uint8_t*)lua_touserdata(L, 1);
+  
+  // 2. Get Offset
+  int offset = (int)luaL_checkinteger(L, 2);
+
+  // 3. Return Value
+  lua_pushinteger(L, ptr[offset]);
+  return 1; // 1 return value
+}
+
+// -----------------------------------------------------------------------------
+// Lua Helper: Write a byte to memory
+// Usage: mem_write(ptr, offset, val)
+// -----------------------------------------------------------------------------
+static int l_mem_write(lua_State* L) {
+  // 1. Get Pointer
+  if (!lua_islightuserdata(L, 1)) return 0;
+  uint8_t* ptr = (uint8_t*)lua_touserdata(L, 1);
+
+  // 2. Get Offset
+  int offset = (int)luaL_checkinteger(L, 2);
+
+  // 3. Get Value
+  int val = (int)luaL_checkinteger(L, 3);
+
+  // 4. Write
+  ptr[offset] = (uint8_t)val;
+  
+  return 0; // 0 return values
+}
+
+
+int 
+mml_frame_lua(AVFrame* base, AVFrame* work, int start_pts, int present_pts, const char* lua_file, char** error)
+{
+  lua_State* L = luaL_newstate();
+  luaL_openlibs(L);
+  lua_register(L, "mem_read", l_mem_read);
+  lua_register(L, "mem_write", l_mem_write);
+  if (luaL_dofile(L, lua_file) != LUA_OK) 
+  {
+    fprintf(stderr, "Lua Error: %s\n", lua_tostring(L, -1));
+    return 1;
+  }
+  lua_getglobal(L, "mml_frame_effect");
+  lua_pushlightuserdata(L, base->data[0]); // Y
+  lua_pushlightuserdata(L, base->data[1]); // U
+  lua_pushlightuserdata(L, base->data[2]); // V
+  lua_pushlightuserdata(L, work->data[0]); // Y
+  lua_pushlightuserdata(L, work->data[1]); // U
+  lua_pushlightuserdata(L, work->data[2]); // V
+  
+  lua_pushinteger(L, base->linesize[0]);   // Stride Y
+  lua_pushinteger(L, base->linesize[1]);   // Stride U
+  lua_pushinteger(L, base->linesize[2]);   // Stride V
+
+  lua_pushinteger(L, base->width);
+  lua_pushinteger(L, base->height);
+  lua_pushinteger(L, present_pts - start_pts);
+  // lua_pushnumber(L, pts * av_q2d(enc_ctx->time_base)); 
+
+  if (lua_pcall(L, 12, 0, 0) != LUA_OK) 
+  {
+    printf("%s\n", lua_tostring(L, -1));
+    mml_error_set(-1, "%s", lua_tostring(L, -1));
+  }
+  lua_close(L);
+  return MML_SUCCESS;
 }
